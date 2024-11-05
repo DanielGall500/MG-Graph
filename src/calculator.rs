@@ -8,7 +8,6 @@ pub struct GrammarSizeCalculator;
 
 impl Calculate for GrammarSizeCalculator {
     fn get_grammar_size(&self, mg: &Grammar, verbose: bool) -> f64 {
-        let mut size: f64 = 0.0;
         let mut n_symbols: f64 = 0.0;
 
         for (phon, feature_bundle) in mg.set_phon.iter().zip(mg.set_feature_bundles.iter()) {
