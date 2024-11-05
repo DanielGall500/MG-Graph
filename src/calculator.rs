@@ -1,26 +1,43 @@
-use grammar::Grammar;
+use crate::grammar::Grammar;
 
-trait Calculator {
-    fn get_grammar_size(&self) -> usize;
+trait Calculate {
+    fn get_grammar_size(&self, mg: &Grammar) -> f64;
 }
 
-pub impl Calculator {
-    pub fn get_grammar_size(&self, mg: Grammar) -> usize {
-        let mut size: usize = 0;
-        let mut n_symbols: usize;
-        let mut encoding_cost_per_symbol: usize;
+struct GrammarSizeCalculator;
 
-        for (phon, feature_bundle) in set_phon.iter().zip(set_feature_bundles.iter()) {
-            n_phonemes = phon.len(); // number of characters in the phonological representation
-            n_features = feature_bundle.len();
+impl Calculate for GrammarSizeCalculator {
+    fn get_grammar_size(&self, mg: &Grammar) -> f64 {
+        let mut size: f64 = 0.0;
+        let mut n_symbols: usize;
+        let mut encoding_cost_per_symbol: f64;
+
+        for (phon, feature_bundle) in mg.set_phon.iter().zip(mg.set_feature_bundles.iter()) {
+            let n_phonemes = phon.len(); // number of characters in the phonological representation
+            let n_features = feature_bundle.len();
             n_symbols = (n_phonemes + 2 * n_features + 1);
-            encoding_cost_per_symbol = mg.alphabet_size + mg.n_feature_types + mg.get_base_size();
-            size += n_symbols * encoding_cost_per_symbol.log2();
+            encoding_cost_per_symbol = (mg.alphabet_size + mg.n_feature_types + mg.get_base_size()) as f64;
+            size += n_symbols as f64 * encoding_cost_per_symbol.log2();
         }
         size
     }
 }
 
-fn get_flattened_size(matrix: Vec<Vec<T>>) -> usize {
-    matrix.iter().map(|bundle| bundle.len()).sum()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exploration() {
+        let mg_example: &str = "Mary :: da -k; John :: da -k; Mary's :: poss; John's :: poss; the-cause :: d -k;";
+        let grammar = match Grammar::new(&mg_example, 26, 7, ';') {
+            Ok(g) => g, // If successful, bind the grammar to `g`
+            Err(e) => panic!("Failed to create Grammar: {}", e), 
+        };
+        let calculator: GrammarSizeCalculator = GrammarSizeCalculator;
+
+        let size: f64 = calculator.get_grammar_size(&grammar);
+        println!("{}", size);
+        assert_eq!(size, 4.0);
+    }
 }
