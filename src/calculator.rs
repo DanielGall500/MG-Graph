@@ -1,25 +1,23 @@
+use grammar::Grammar;
+
 trait Calculator {
-    fn get_base_size(&self) -> usize;
-    fn get_phon_size(&self) -> usize;
-    fn get_feature_size(&self) -> usize;
     fn get_grammar_size(&self) -> usize;
 }
 
-impl Calculator {
-    fn get_base_size(&self) -> usize {
-        self.statements.len()
-    }
+pub impl Calculator {
+    pub fn get_grammar_size(&self, mg: Grammar) -> usize {
+        let mut size: usize = 0;
+        let mut n_symbols: usize;
+        let mut encoding_cost_per_symbol: usize;
 
-    fn get_phon_size(&self) -> usize {
-        self.phon.len()
-    }
-
-    fn get_feature_size(&self) -> usize {
-        get_flattened_size(self.feature_bundles)
-    }
-
-    fn get_grammar_size(&self) -> usize {
-        /* TODO */
+        for (phon, feature_bundle) in set_phon.iter().zip(set_feature_bundles.iter()) {
+            n_phonemes = phon.len(); // number of characters in the phonological representation
+            n_features = feature_bundle.len();
+            n_symbols = (n_phonemes + 2 * n_features + 1);
+            encoding_cost_per_symbol = mg.alphabet_size + mg.n_feature_types + mg.get_base_size();
+            size += n_symbols * encoding_cost_per_symbol.log2();
+        }
+        size
     }
 }
 
