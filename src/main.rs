@@ -1,20 +1,17 @@
-use actix_web::{web, App, HttpServer, Responder};
+// src/main.rs
+use actix_web::{web, App, HttpServer, HttpResponse};
 
-async fn index() -> impl Responder {
-    "Hello world!"
+async fn greet() -> HttpResponse {
+    HttpResponse::Ok().body("Hello, Actix Web!")
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
-        App::new().service(
-            // prefixes all resources and routes attached to it...
-            web::scope("/app")
-                // ...so this handles requests for `GET /app/index.html`
-                .route("/index.html", web::get().to(index)),
-        )
+        App::new()
+            .route("/", web::get().to(greet))
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind("127.0.0.1:8088")?  // Bind to the address and port
     .run()
     .await
 }
