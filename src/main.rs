@@ -1,6 +1,9 @@
 // src/main.rs
-use actix_web::{post, web, App, HttpResponse, HttpServer};
+use actix_web::{get, http, web, App, post, HttpRequest, HttpResponse, HttpServer};
+use actix_cors::Cors;
+use actix_web::{http::header, middleware::Logger};
 use serde::{Deserialize, Serialize};
+use std::io;
 
 // Import your grammar calculation logic
 mod grammar;
@@ -35,13 +38,29 @@ async fn calculate_size(input: web::Json<GrammarInput>) -> HttpResponse {
     HttpResponse::Ok().json(response)
 }
 
+#[get("/index.html")]
+async fn index(req: HttpRequest) -> &'static str {
+    "<p>Hello World!</p>"
+}
+
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+async fn main() -> io::Result<()> {
+    HttpServer::new(move || {
         App::new()
-            .service(calculate_size) // Register the calculate_size endpoint
+            .wrap(
+                Cors::default()
+                    .allowed_origin("http://localhost:8081")
+                    .allowed_methods(vec!["GET", "POST"])
+                    .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+                    .allowed_header(header::CONTENT_TYPE)
+                    .supports_credentials()
+                    .max_age(3600),
+            )
+            .wrap(Logger::default())
+            .service(calculate_size)
     })
-    .bind("127.0.0.1:8080")?
+    .bind(("127.0.0.1", 8080))?
+    .workers(2)
     .run()
     .await
 }
