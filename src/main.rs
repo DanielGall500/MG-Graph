@@ -1,6 +1,4 @@
 use actix_web::{web, App, HttpServer, Responder};
-pub mod grammar;
-pub mod calculator;
 
 async fn index() -> impl Responder {
     "Hello world!"

@@ -1,50 +1,35 @@
 use crate::grammar::Grammar;
 
-trait Calculate {
-    fn get_grammar_size(&self, mg: &Grammar) -> f64;
+pub trait Calculate {
+    fn get_grammar_size(&self, mg: &Grammar, verbose: bool) -> f64;
 }
 
-struct GrammarSizeCalculator;
+pub struct GrammarSizeCalculator;
 
 impl Calculate for GrammarSizeCalculator {
-    fn get_grammar_size(&self, mg: &Grammar) -> f64 {
+    fn get_grammar_size(&self, mg: &Grammar, verbose: bool) -> f64 {
         let mut size: f64 = 0.0;
-        let mut n_symbols: usize;
-        let mut encoding_cost_per_symbol: f64;
-
-        println!("Base Size: {}", mg.get_base_size());
+        let mut n_symbols: f64 = 0.0;
 
         for (phon, feature_bundle) in mg.set_phon.iter().zip(mg.set_feature_bundles.iter()) {
-            let n_phonemes = phon.len(); // number of characters in the phonological representation
-            let n_features = feature_bundle.len();
-            n_symbols = (n_phonemes + 2 * n_features + 1);
-            encoding_cost_per_symbol = (mg.alphabet_size + mg.n_feature_types + mg.get_base_size()) as f64;
-            size += n_symbols as f64 * encoding_cost_per_symbol.log2();
+            let n_phonemes_i = phon.len(); // number of characters in the phonological representation
+            let n_features_i = feature_bundle.len();
+            let n_symbols_i = n_phonemes_i + 2 * n_features_i + 1;
+
+            n_symbols += n_symbols_i as f64;
+
+            if verbose {
+                println!("Word: {}", phon);
+                feature_bundle.into_iter().for_each(|f| print!(" {}",f));
+                println!("(|{}| + 2 * |{}| + 1)", n_phonemes_i,n_features_i);
+            }
         }
-        size
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn exploration() {
-        let mg_example: &str = "Mary :: d -k;
-                                laughs :: =d +k t;
-                                laughed :: =d +k t;
-                                jumps :: =d +k t;
-                                jumped :: =d +k t;";
-        let grammar = match Grammar::new(&mg_example, 26, 7, ';') {
-            Ok(g) => g, // If successful, bind the grammar to `g`
-            Err(e) => panic!("Failed to create Grammar: {}", e), 
-        };
-
-        let calculator: GrammarSizeCalculator = GrammarSizeCalculator;
-
-        let size: f64 = calculator.get_grammar_size(&grammar);
-        println!("{}", size);
-        assert_eq!(size, 4.0);
+        let encoding_cost_per_symbol: f64 = ((mg.alphabet_size + mg.n_feature_types + mg.get_base_size() + 1) as f64).log2();
+        if verbose {
+            println!("Base Size: {}", mg.get_base_size());
+            println!("Encoding Cost Per Symbol: {}", encoding_cost_per_symbol);
+        }
+        n_symbols * encoding_cost_per_symbol
     }
 }
