@@ -12,6 +12,8 @@ impl Calculate for GrammarSizeCalculator {
         let mut n_symbols: usize;
         let mut encoding_cost_per_symbol: f64;
 
+        println!("Base Size: {}", mg.get_base_size());
+
         for (phon, feature_bundle) in mg.set_phon.iter().zip(mg.set_feature_bundles.iter()) {
             let n_phonemes = phon.len(); // number of characters in the phonological representation
             let n_features = feature_bundle.len();
@@ -29,11 +31,16 @@ mod tests {
 
     #[test]
     fn exploration() {
-        let mg_example: &str = "Mary :: da -k; John :: da -k; Mary's :: poss; John's :: poss; the-cause :: d -k;";
+        let mg_example: &str = "Mary :: d -k;
+                                laughs :: =d +k t;
+                                laughed :: =d +k t;
+                                jumps :: =d +k t;
+                                jumped :: =d +k t;";
         let grammar = match Grammar::new(&mg_example, 26, 7, ';') {
             Ok(g) => g, // If successful, bind the grammar to `g`
             Err(e) => panic!("Failed to create Grammar: {}", e), 
         };
+
         let calculator: GrammarSizeCalculator = GrammarSizeCalculator;
 
         let size: f64 = calculator.get_grammar_size(&grammar);

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 pub struct Grammar {
     mg: String,
     statements: Vec<String>,
@@ -27,8 +29,13 @@ impl Grammar {
         }
     }
 
+    /* TODO: Handle this better, be able to add more */
     pub fn get_base_size(&self) -> usize {
-        self.statements.len()
+        let features = flatten(&self.set_feature_bundles);
+        let unique_features: HashSet<_> = features.into_iter().map(
+            |s| s.replace("-", "").replace("+", "").replace("=","").replace("<=","").replace("=>","")).collect();
+
+        unique_features.len()
     }
 
     pub fn get_phon_size(&self) -> usize {
@@ -36,7 +43,7 @@ impl Grammar {
     }
 
     pub fn get_feature_size(&self) -> usize {
-        get_flattened_size(&self.set_feature_bundles)
+        flatten(&self.set_feature_bundles).len()
     }
 
     fn mg_to_statements(mg: &str, delim: char) -> Vec<String> {
@@ -60,7 +67,7 @@ impl Grammar {
                 set_phon.push(phon); 
 
                 // Add δ, the right side of the statement indicating all present features
-                let feature_bundle: Vec<String> = syn.split(' ').map(|s| s.trim().to_string()).collect();
+                let feature_bundle: Vec<String> = syn.split(' ').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
                 set_feature_bundle.push(feature_bundle)
             } else {
                 println!("Statement formatted incorrectly. Ignoring.");
@@ -74,6 +81,10 @@ impl Grammar {
     }
 }
 
-fn get_flattened_size(matrix: &Vec<Vec<String>>) -> usize {
-    matrix.iter().map(|bundle| bundle.len()).sum()
+fn flatten(matrix: &Vec<Vec<String>>) -> Vec<String> {
+    let mut flattened = Vec::new();
+    for inner_vec in matrix {
+        flattened.extend(inner_vec.clone());
+    }
+    flattened
 }
