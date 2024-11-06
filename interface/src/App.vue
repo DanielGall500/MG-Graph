@@ -1,13 +1,20 @@
 <template>
-  <div id="app">
-    <h1>Minimalist Grammar Input</h1>
-    <form @submit.prevent="submitGrammar">
-      <textarea v-model="grammar" placeholder="Enter your grammar here..." rows="10" cols="30"></textarea>
-      <br />
-      <button type="submit">Calculate Size</button>
+  <div id="app" class="container">
+    <h1 class="display-4 text-primary mt-5">Minimalist Grammar Size Calculator</h1>
+    <form @submit.prevent="submitGrammar" class="mt-4 p-4 rounded shadow-sm bg-light">
+      <div class="form-group">
+        <textarea
+          v-model="grammar"
+          class="form-control"
+          placeholder="Enter your grammar here..."
+          rows="8"
+        ></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Calculate Size</button>
     </form>
-    <div v-if="size !== null">
-      <h2>Grammar Size: {{ size }}</h2>
+
+    <div v-if="size !== null" class="mt-4 p-3 bg-success text-white rounded shadow-sm">
+      <h2>Grammar Size: <span class="font-weight-bold">{{ size }}</span></h2>
     </div>
   </div>
 </template>
@@ -23,8 +30,7 @@ export default {
   methods: {
     async submitGrammar() {
       try {
-        console.log("SUBMITTTINGGG")
-        const response = await fetch('http://localhost:8080/calculate', { // Adjust the URL as necessary
+        const response = await fetch('http://127.0.0.1:8000/calculate', { // Adjust the URL as necessary
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -41,15 +47,23 @@ export default {
 };
 </script>
 
-<style>
-/* Add some basic styles */
+<style scoped>
 #app {
   max-width: 600px;
   margin: 0 auto;
+  padding: 20px;
+}
+h1 {
+  font-size: 2rem;
   text-align: center;
+  margin-bottom: 20px;
 }
 textarea {
   width: 100%;
-  margin-bottom: 10px;
+  resize: vertical;
+  padding: 10px;
+}
+button {
+  font-size: 1.1rem;
 }
 </style>
