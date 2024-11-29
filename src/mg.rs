@@ -29,6 +29,7 @@ pub mod mg {
             Ok(())
         }
 
+        // use MERGE instead
         pub async fn set_relationship(&self, cat_a: &str, cat_b: &str, node_a: &str, node_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
             let set_relationship_query = format!(
                 "MATCH (a:{} {{ name: \"{}\" }}), (b:{} {{name: \"{}\" }})

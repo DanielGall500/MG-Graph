@@ -1,5 +1,6 @@
 mod mg; 
 use dotenv::dotenv;
+use mg::mg::GrammarGraph;
 use std::env;
 
 
@@ -15,14 +16,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "neo4j://localhost:7687",
         "neo4j",
         secret_key.as_str(),
-        "My Grammar Graph",
+        "Minimalist Grammar",
     )
     .await?;
-    grammar_graph.clear().await?;
-    grammar_graph.create_state("Sam").await?;
-    grammar_graph.create_state("Daniel").await?;
-    grammar_graph.connect_states("Sam", "Daniel", "omgtheybeinarelationship").await?;
-    grammar_graph.connect_states("Daniel", "Sam", "woaaahrelationship").await?;
+    create_example(grammar_graph).await?;
 
+    Ok(())
+}
+
+async fn create_example(gg: GrammarGraph) -> Result<(), Box<dyn std::error::Error>> {
+    gg.clear().await?;
+    gg.create_state("n").await?;
+    gg.create_state("d").await?;
+    gg.create_state("v").await?;
+    gg.create_state("g").await?;
+    gg.create_state("t").await?;
+    gg.connect_states("n", "d", "this").await?;
+    gg.connect_states("d", "v", "laugh").await?;
+    gg.connect_states("v", "g", "`-ing`").await?;
+    gg.connect_states("v", "t", "`-s`").await?;
+    gg.connect_states("g", "t", "is").await?;
     Ok(())
 }
