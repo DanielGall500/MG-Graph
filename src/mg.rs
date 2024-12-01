@@ -18,6 +18,12 @@ pub mod mg {
             Ok(())
         }
 
+        pub async fn delete_node(&self, category: &str, label_id: &str, label_val: &str) -> Result<(), Box<dyn Error>> {
+            let remove_node_query = format!("MATCH (p:{} {{ {}: \"{}\" }}) DETACH DELETE p", category, label_id, label_val);
+            self.graph.run(query(&remove_node_query)).await?;
+            Ok(())
+        }
+
         pub async fn set_node_property(&self, node_type: &str, node_id_key: &str, node_id_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
             let set_node_property_query = format!(
                 "MATCH (n:{} {{ {}: {} }}) SET n.{} = {} RETURN n",
@@ -114,14 +120,27 @@ pub mod mg {
             self.base.graph.run(query(contract_edge_query.as_str())).await?;
 
             let reassign_relationships = format!(
-                "MATCH (a {{ name: '{}' }})-[r:MERGE]->(b)
-                    WITH a, b, r
-                    MATCH (n {{ name: '{}' }})
-                    CREATE (n)-[newRel: MERGE {{ li: r.li }}]->(b)
-                    RETURN newRel", 
-                    &edge.state_b_id, &new_node_id);
+                "MATCH (a)-[r:MERGE]->(b)
+                WHERE a.name = '{}' OR a.name = '{}' 
+                WITH a, b, r
+                MATCH (n {{ name: '{}' }})
+                CREATE (n)-[newRel: MERGE {{ li: r.li }}]->(b)", 
+                &edge.state_a_id, &edge.state_b_id, &new_node_id);
             println!("Query: {}", reassign_relationships);
             self.base.graph.run(query(reassign_relationships.as_str())).await?;
+
+            let reassign_relationships = format!(
+                "MATCH (a)-[r:MERGE]->(b)
+                WHERE b.name = '{}' OR b.name = '{}' 
+                WITH a, b, r
+                MATCH (n {{ name: '{}' }})
+                CREATE (a)-[newRel: MERGE {{ li: r.li }}]->(n)", 
+                &edge.state_a_id, &edge.state_b_id, &new_node_id);
+            println!("Query: {}", reassign_relationships);
+            self.base.graph.run(query(reassign_relationships.as_str())).await?;
+
+            self.base.delete_node("State", "name", &edge.state_a_id).await?;
+            self.base.delete_node("State", "name", &edge.state_b_id).await?;
             Ok(())
         }
 

@@ -32,6 +32,8 @@ async fn create_example(gg: GrammarGraph) -> Result<(), Box<dyn std::error::Erro
     gg.create_state("v").await?;
     gg.create_state("g").await?;
     gg.create_state("t").await?;
+    gg.connect_states("t", "n", "superdyduper").await?;
+    gg.connect_states("n", "t", "lol").await?;
     gg.connect_states("n", "d", "this").await?;
     gg.connect_states("d", "v", "laugh").await?;
     gg.connect_states("v", "g", "`-ing`").await?;
