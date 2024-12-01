@@ -1,6 +1,7 @@
 mod mg; 
 use dotenv::dotenv;
 use mg::mg::GrammarGraph;
+use mg::mg::Edge;
 use std::env;
 
 
@@ -36,5 +37,11 @@ async fn create_example(gg: GrammarGraph) -> Result<(), Box<dyn std::error::Erro
     gg.connect_states("v", "g", "`-ing`").await?;
     gg.connect_states("v", "t", "`-s`").await?;
     gg.connect_states("g", "t", "is").await?;
+    let edge: Edge<'_> = Edge {
+        state_a_id: "n",
+        state_b_id: "d",
+        rel: "this"
+    };
+    gg.delete_edge(&edge).await?;
     Ok(())
 }

@@ -1,7 +1,6 @@
 pub mod mg {
     use neo4rs::{query, Graph};
     use std::error::Error;
-
     pub struct GeneralGraph {
         graph: Graph,
     }
@@ -31,11 +30,22 @@ pub mod mg {
 
         // use MERGE instead
         pub async fn set_relationship(&self, cat_a: &str, cat_b: &str, node_a: &str, node_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
+            println!("Creating {}-{}-{}", node_a, node_b, rel);
             let set_relationship_query = format!(
                 "MATCH (a:{} {{ name: \"{}\" }}), (b:{} {{name: \"{}\" }})
                 CREATE (a)-[:{}]->(b)
                 RETURN a, b", cat_a, node_a, cat_b, node_b, rel);
             self.graph.run(query(set_relationship_query.as_str())).await?;
+            Ok(())
+        }
+
+        pub async fn remove_relationship(&self, cat_a: &str, cat_b: &str, node_a: &str, node_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
+            println!("Removing {}-{}-{}", node_a, node_b, rel);
+            let delete_relationship_query = format!(
+                "MATCH (a:{} {{ name: \"{}\" }})-[edge:{}]->(b:{} {{name: \"{}\" }})
+                DELETE edge", 
+                cat_a, node_a, rel, cat_b, node_b);
+            self.graph.run(query(delete_relationship_query.as_str())).await?;
             Ok(())
         }
 
@@ -46,6 +56,16 @@ pub mod mg {
         }
 
 
+    }
+
+    pub struct State<'a> {
+        state_id: &'a str,
+    }
+
+    pub struct Edge<'a> {
+        pub state_a_id: &'a str,
+        pub state_b_id: &'a str,
+        pub rel: &'a str
     }
 
     pub struct GrammarGraph {
@@ -73,6 +93,16 @@ pub mod mg {
             self.base.set_relationship("State", "State", state_a, state_b, rel).await?;
             Ok(())
         }
+
+        pub async fn delete_edge<'a>(&self, edge: &Edge<'a>) -> Result<(), Box<dyn Error>> {
+            self.base.remove_relationship("State", "State", 
+            &edge.state_a_id, &edge.state_b_id, &edge.rel).await?;
+            Ok(())
+        }
+
+        //pub async fn contract_edge(&self) -> Result<(), Box<dyn Error>> {
+
+        // }
 
         pub async fn clear(&self) -> Result<(), Box<dyn Error>> {
             self.base.clear().await?;
