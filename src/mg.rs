@@ -33,7 +33,7 @@ pub mod mg {
             println!("Creating {}-{}-{}", node_a, node_b, rel);
             let set_relationship_query = format!(
                 "MATCH (a:{} {{ name: \"{}\" }}), (b:{} {{name: \"{}\" }})
-                CREATE (a)-[:{}]->(b)
+                CREATE (a)-[:MERGE {{ li: \'{}\' }}]->(b)
                 RETURN a, b", cat_a, node_a, cat_b, node_b, rel);
             self.graph.run(query(set_relationship_query.as_str())).await?;
             Ok(())
@@ -42,7 +42,7 @@ pub mod mg {
         pub async fn remove_relationship(&self, cat_a: &str, cat_b: &str, node_a: &str, node_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
             println!("Removing {}-{}-{}", node_a, node_b, rel);
             let delete_relationship_query = format!(
-                "MATCH (a:{} {{ name: \"{}\" }})-[edge:{}]->(b:{} {{name: \"{}\" }})
+                "MATCH (a:{} {{ name: \"{}\" }})-[edge:MERGE {{ li: \'{}\' }}]->(b:{} {{name: \"{}\" }})
                 DELETE edge", 
                 cat_a, node_a, rel, cat_b, node_b);
             self.graph.run(query(delete_relationship_query.as_str())).await?;
@@ -100,9 +100,30 @@ pub mod mg {
             Ok(())
         }
 
-        //pub async fn contract_edge(&self) -> Result<(), Box<dyn Error>> {
+        pub async fn contract_edge<'a>(&self, edge: &Edge<'a>) -> Result<(), Box<dyn Error>> {
+            println!("Contracting {}-{}-{}", edge.state_a_id, edge.state_b_id, edge.rel);
+            let new_node_id = format!("{}-{}", edge.state_a_id, edge.state_b_id);
+            let contract_edge_query = format!(
+                "MATCH (a:State {{ name: '{}' }})-[e:MERGE {{ li: \'{}\' }}]->(b:State {{ name: '{}' }})
+                    WITH a, b, e
+                    CREATE (merged:State {{ name: '{}' }})
+                    DELETE e", 
+                &edge.state_a_id, &edge.rel, &edge.state_b_id, &new_node_id);
 
-        // }
+            println!("Query: {}", contract_edge_query);
+            self.base.graph.run(query(contract_edge_query.as_str())).await?;
+
+            let reassign_relationships = format!(
+                "MATCH (a {{ name: '{}' }})-[r:MERGE]->(b)
+                    WITH a, b, r
+                    MATCH (n {{ name: '{}' }})
+                    CREATE (n)-[newRel: MERGE {{ li: r.li }}]->(b)
+                    RETURN newRel", 
+                    &edge.state_b_id, &new_node_id);
+            println!("Query: {}", reassign_relationships);
+            self.base.graph.run(query(reassign_relationships.as_str())).await?;
+            Ok(())
+        }
 
         pub async fn clear(&self) -> Result<(), Box<dyn Error>> {
             self.base.clear().await?;

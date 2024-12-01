@@ -42,6 +42,7 @@ async fn create_example(gg: GrammarGraph) -> Result<(), Box<dyn std::error::Erro
         state_b_id: "d",
         rel: "this"
     };
-    gg.delete_edge(&edge).await?;
+    // gg.delete_edge(&edge).await?;
+    gg.contract_edge(&edge).await?;
     Ok(())
 }
