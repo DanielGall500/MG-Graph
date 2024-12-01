@@ -119,25 +119,25 @@ pub mod mg {
             println!("Query: {}", contract_edge_query);
             self.base.graph.run(query(contract_edge_query.as_str())).await?;
 
-            let reassign_relationships = format!(
+            let reassign_relationships_from_new_node = format!(
                 "MATCH (a)-[r:MERGE]->(b)
                 WHERE a.name = '{}' OR a.name = '{}' 
                 WITH a, b, r
                 MATCH (n {{ name: '{}' }})
                 CREATE (n)-[newRel: MERGE {{ li: r.li }}]->(b)", 
                 &edge.state_a_id, &edge.state_b_id, &new_node_id);
-            println!("Query: {}", reassign_relationships);
-            self.base.graph.run(query(reassign_relationships.as_str())).await?;
+            println!("Query: {}", reassign_relationships_from_new_node);
+            self.base.graph.run(query(&reassign_relationships_from_new_node.as_str())).await?;
 
-            let reassign_relationships = format!(
+            let reassign_relationships_to_new_node = format!(
                 "MATCH (a)-[r:MERGE]->(b)
                 WHERE b.name = '{}' OR b.name = '{}' 
                 WITH a, b, r
                 MATCH (n {{ name: '{}' }})
                 CREATE (a)-[newRel: MERGE {{ li: r.li }}]->(n)", 
                 &edge.state_a_id, &edge.state_b_id, &new_node_id);
-            println!("Query: {}", reassign_relationships);
-            self.base.graph.run(query(reassign_relationships.as_str())).await?;
+            println!("Query: {}", reassign_relationships_to_new_node);
+            self.base.graph.run(query(&reassign_relationships_to_new_node.as_str())).await?;
 
             self.base.delete_node("State", "name", &edge.state_a_id).await?;
             self.base.delete_node("State", "name", &edge.state_b_id).await?;
