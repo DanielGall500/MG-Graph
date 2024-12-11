@@ -2,12 +2,18 @@ mod mg;
 use dotenv::dotenv;
 use mg::mg::GrammarGraph;
 use mg::mg::Edge;
+use mg::mg::MGParser;
+use core::panic;
 use std::env;
 
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use crate::mg::*;
+
+    let mg_parser: MGParser = MGParser::new();
+    mg_parser.from_mg("laugh :: =d +k t");
+    panic!("Finishing...");
 
     dotenv().ok();
     let secret_key = env::var("PASSWORD")
@@ -21,6 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
     create_example(grammar_graph).await?;
+
 
     Ok(())
 }

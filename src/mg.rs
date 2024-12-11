@@ -153,4 +153,47 @@ pub mod mg {
             &self.graph_title
         }
     }
+    
+    pub struct LexicalItem {
+        morph: String,
+        bundle: Vec<String>,
+    }
+
+    pub struct MGParser {
+        states: Vec<String>,
+    }
+
+    impl MGParser {
+        pub fn new() -> Self {
+            Self{
+                states: Vec::new(),
+            }
+        }
+
+        pub fn parse_grammar_representation(&self, minimalist_grammar: &str) -> Result<(), Box<dyn Error>> {
+            let mut lexical_items: Vec<LexicalItem> = Vec::new();
+            let mut lines = minimalist_grammar.lines();
+            for l in lines.into_iter() {
+
+                let mut li: LexicalItem = LexicalItem { morph: String::from(""), bundle: Vec::new() };
+
+                // e.g laughs :: d= +k t
+                let morph_feature_split: Vec<String> = l.split("::").map(|c| c.to_string()).collect();
+
+                if let Some(morph) = morph_feature_split.get(0) {
+                    li.morph = morph.trim().to_string();
+                    println!("Morph: {}", li);
+                }
+                if let Some(features) = morph_feature_split.get(1) {
+                    let individual_feature_split: Vec<String> = features.split_whitespace().map(|c| c.trim().to_string()).collect();
+                    for feature in individual_feature_split {
+                        li.bundle.push(feature);
+                        println!("-{}-", feature);
+                    }
+                }
+                lexical_items.push(li);
+            }
+            Ok(())
+        }
+    }
 }
