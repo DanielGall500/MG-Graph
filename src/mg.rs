@@ -1,5 +1,6 @@
 pub mod mg {
-    use neo4rs::{query, Graph};
+    use neo4rs::{query, Graph, Relation};
+    use core::panic;
     use std::error::Error;
     pub struct GeneralGraph {
         graph: Graph,
@@ -155,22 +156,41 @@ pub mod mg {
     }
     
     pub struct LexicalItem {
-        morph: String,
-        bundle: Vec<String>,
+        pub morph: String,
+        pub bundle: Vec<Feature>,
+    }
+
+    pub struct Feature {
+        pub id: String,
+        pub rel: LIRelation
     }
 
     pub struct MGParser {
         states: Vec<String>,
     }
 
+    pub enum LIRelation {
+        LMerge,
+        RMerge,
+        MinusMove,
+        PlusMove,
+        State,
+    }
+
     impl MGParser {
+        /*
+        TODO:
+        1. Create nodes for each state that is mentioned with merge or on its own.
+        2. For each = connection leading to a state on its own, connect those two states by the merge.
+        3. Upload a test file to test if it works correctly.
+         */
         pub fn new() -> Self {
             Self{
                 states: Vec::new(),
             }
         }
 
-        pub fn parse_grammar_representation(&self, minimalist_grammar: &str) -> Result<(), Box<dyn Error>> {
+        pub fn parse_grammar_representation(&self, minimalist_grammar: &str) -> Vec<LexicalItem> {
             let mut lexical_items: Vec<LexicalItem> = Vec::new();
             let mut lines = minimalist_grammar.lines();
             for l in lines.into_iter() {
@@ -182,18 +202,46 @@ pub mod mg {
 
                 if let Some(morph) = morph_feature_split.get(0) {
                     li.morph = morph.trim().to_string();
-                    println!("Morph: {}", li);
+                    println!("Morph: {}", li.morph);
+                }
+                else {
+                    panic!("Invalid MG file.");
                 }
                 if let Some(features) = morph_feature_split.get(1) {
                     let individual_feature_split: Vec<String> = features.split_whitespace().map(|c| c.trim().to_string()).collect();
+                    let mut relation: LIRelation = LIRelation::State;
+                    let mut id: String;
                     for feature in individual_feature_split {
-                        li.bundle.push(feature);
-                        println!("-{}-", feature);
+                        if feature.starts_with("=") {
+                            relation = LIRelation::LMerge;
+                            id = feature[1..feature.len()].to_string();
+                            li.bundle.push(Feature { id: id, rel: LIRelation::LMerge });
+                        }
+                        else if feature.ends_with("=") {
+                            relation = LIRelation::RMerge;
+                            id = feature[..feature.len() - 1].to_string();
+                            li.bundle.push(Feature { id: id, rel: LIRelation::RMerge });
+                        }
+                        else if feature.starts_with("-") {
+                            relation = LIRelation::MinusMove;
+                            id = feature[1..feature.len()].to_string();
+                            li.bundle.push(Feature { id: id, rel: LIRelation::MinusMove });
+                        }
+                        else if feature.starts_with("+") {
+                            relation = LIRelation::PlusMove;
+                            id = feature[1..feature.len()].to_string();
+                            li.bundle.push(Feature { id: id, rel: LIRelation::PlusMove });
+                        }
+                        else {
+                            li.bundle.push(Feature { id: feature.to_string(), rel: LIRelation::State });
+                        }
+                        
+                        println!("-{}-", feature.to_string());
                     }
                 }
                 lexical_items.push(li);
             }
-            Ok(())
+            return lexical_items;
         }
     }
 }

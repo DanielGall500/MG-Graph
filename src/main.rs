@@ -3,6 +3,8 @@ use dotenv::dotenv;
 use mg::mg::GrammarGraph;
 use mg::mg::Edge;
 use mg::mg::MGParser;
+use mg::mg::LexicalItem;
+use mg::mg::LIRelation;
 use core::panic;
 use std::env;
 
@@ -12,7 +14,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use crate::mg::*;
 
     let mg_parser: MGParser = MGParser::new();
-    mg_parser.from_mg("laugh :: =d +k t");
+    let rep = mg_parser.parse_grammar_representation("laugh :: =d +k t");
+    for li in rep {
+        println!("{}", li.morph); 
+        for f in li.bundle {
+            println!("ID: {}", f.id);
+            match f.rel {
+                LIRelation::LMerge => println!("LMERGE"),
+                LIRelation::RMerge => println!("RMERGE"),
+                LIRelation::PlusMove => println!("+ Move"),
+                LIRelation::MinusMove => println!("- Move"),
+                LIRelation::State => println!("State")
+            }
+        }
+    }
     panic!("Finishing...");
 
     dotenv().ok();
