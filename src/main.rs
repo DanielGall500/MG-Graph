@@ -13,11 +13,11 @@ use std::env;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use crate::mg::*;
 
-    let mg_parser: MGParser = MGParser::new();
-    let rep = mg_parser.parse_grammar_representation("laugh :: =d +k t");
-    for li in rep {
+    let mut mg_parser: MGParser = MGParser::new();
+    mg_parser.parse_grammar_representation("laugh :: =d +k t");
+    for li in &mg_parser.mg {
         println!("{}", li.morph); 
-        for f in li.bundle {
+        for f in &li.bundle {
             println!("ID: {}", f.id);
             match f.rel {
                 LIRelation::LMerge => println!("LMERGE"),
@@ -28,6 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+    mg_parser.to_json();
     panic!("Finishing...");
 
     dotenv().ok();

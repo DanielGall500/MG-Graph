@@ -1,0 +1,22 @@
+[
+  {
+    "morph": "laugh",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  }
+]

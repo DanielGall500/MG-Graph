@@ -2,6 +2,12 @@ pub mod mg {
     use neo4rs::{query, Graph, Relation};
     use core::panic;
     use std::error::Error;
+    use std::io::Write;
+    use serde::{Serialize, Deserialize};
+    use std::fs::File;
+    use std::fs::write;
+    use std::collections::HashSet;
+
     pub struct GeneralGraph {
         graph: Graph,
     }
@@ -155,20 +161,26 @@ pub mod mg {
         }
     }
     
+    #[derive(Serialize, Deserialize)]
     pub struct LexicalItem {
         pub morph: String,
         pub bundle: Vec<Feature>,
     }
-
+    #[derive(Serialize, Deserialize)]
     pub struct Feature {
+        pub raw: String,
         pub id: String,
         pub rel: LIRelation
     }
 
     pub struct MGParser {
-        states: Vec<String>,
+        states: HashSet<String>,
+        pub mg: Vec<LexicalItem>
     }
 
+    
+    
+    #[derive(Serialize, Deserialize)]
     pub enum LIRelation {
         LMerge,
         RMerge,
@@ -186,11 +198,40 @@ pub mod mg {
          */
         pub fn new() -> Self {
             Self{
-                states: Vec::new(),
+                states: HashSet::new(),
+                mg: Vec::new(),
             }
         }
 
-        pub fn parse_grammar_representation(&self, minimalist_grammar: &str) -> Vec<LexicalItem> {
+        pub fn create_grammar_graph(&mut self) -> Result<(), Box<dyn Error>> {
+            for li in &self.states {
+                /* Create nodes with the states */
+            }
+            for li in &self.mg {
+                for f in &li.bundle {
+                    match f.rel {
+                        LIRelation::LMerge => println!("LMERGE"),
+                        LIRelation::RMerge => println!("RMERGE"),
+                        LIRelation::PlusMove => println!("+ Move"),
+                        LIRelation::MinusMove => println!("- Move"),
+                        LIRelation::State => println!("State")
+                    }
+                }
+            }
+            Ok(())
+        }
+
+        pub fn to_json(&self) -> Result<(), Box<dyn Error>> {
+            let mut file = File::create("output.json")?;
+            match serde_json::to_string_pretty(&self.mg) {
+                Ok(json) => file.write_all(json.as_bytes())?,
+                Err(e) => eprintln!("Error serializing data to JSON: {}", e),
+            }
+            Ok(())
+        }
+
+        pub fn parse_grammar_representation(&mut self, minimalist_grammar: &str) -> Result<(), Box<dyn Error>> {
+            self.mg.clear();
             let mut lexical_items: Vec<LexicalItem> = Vec::new();
             let mut lines = minimalist_grammar.lines();
             for l in lines.into_iter() {
@@ -215,33 +256,35 @@ pub mod mg {
                         if feature.starts_with("=") {
                             relation = LIRelation::LMerge;
                             id = feature[1..feature.len()].to_string();
-                            li.bundle.push(Feature { id: id, rel: LIRelation::LMerge });
+                            li.bundle.push(Feature { raw: feature.clone(), id: id.clone(), rel: LIRelation::LMerge });
                         }
                         else if feature.ends_with("=") {
                             relation = LIRelation::RMerge;
                             id = feature[..feature.len() - 1].to_string();
-                            li.bundle.push(Feature { id: id, rel: LIRelation::RMerge });
+                            li.bundle.push(Feature { raw: feature.clone(), id: id.clone(), rel: LIRelation::RMerge });
                         }
                         else if feature.starts_with("-") {
                             relation = LIRelation::MinusMove;
                             id = feature[1..feature.len()].to_string();
-                            li.bundle.push(Feature { id: id, rel: LIRelation::MinusMove });
+                            li.bundle.push(Feature { raw: feature.clone(), id: id.clone(), rel: LIRelation::MinusMove });
                         }
                         else if feature.starts_with("+") {
                             relation = LIRelation::PlusMove;
                             id = feature[1..feature.len()].to_string();
-                            li.bundle.push(Feature { id: id, rel: LIRelation::PlusMove });
+                            li.bundle.push(Feature { raw: feature.clone(), id: id.clone(), rel: LIRelation::PlusMove });
                         }
                         else {
-                            li.bundle.push(Feature { id: feature.to_string(), rel: LIRelation::State });
+                            id = feature.to_string();
+                            li.bundle.push(Feature { raw: feature.clone(), id: id.clone(), rel: LIRelation::State });
                         }
+                        self.states.insert(id.clone());
                         
                         println!("-{}-", feature.to_string());
                     }
                 }
-                lexical_items.push(li);
+                self.mg.push(li);
             }
-            return lexical_items;
+            Ok(())
         }
     }
 }
