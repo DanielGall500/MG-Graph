@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     mg_parser.to_json();
-    panic!("Finishing...");
+    // panic!("Finishing...");
 
     dotenv().ok();
     let secret_key = env::var("PASSWORD")
@@ -42,9 +42,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Minimalist Grammar",
     )
     .await?;
-    create_example(grammar_graph).await?;
-
-
+    // create_example(grammar_graph).await?;
+    grammar_graph.clear().await?;
+    mg_parser.create_grammar_graph(&grammar_graph).await?;
     Ok(())
 }
 

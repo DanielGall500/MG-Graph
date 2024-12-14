@@ -203,18 +203,27 @@ pub mod mg {
             }
         }
 
-        pub fn create_grammar_graph(&mut self) -> Result<(), Box<dyn Error>> {
+        pub async fn create_grammar_graph(&mut self, gg: &GrammarGraph) -> Result<(), Box<dyn Error>> {
             for li in &self.states {
                 /* Create nodes with the states */
+                gg.create_state(li.as_str()).await?;
             }
+            let mut merge_state: Option<&Feature> = None;
+            let mut final_state: Option<&Feature> = None;
             for li in &self.mg {
                 for f in &li.bundle {
                     match f.rel {
-                        LIRelation::LMerge => println!("LMERGE"),
-                        LIRelation::RMerge => println!("RMERGE"),
+                        LIRelation::LMerge => merge_state = Some(f),
+                        LIRelation::RMerge => merge_state = Some(f),
                         LIRelation::PlusMove => println!("+ Move"),
                         LIRelation::MinusMove => println!("- Move"),
-                        LIRelation::State => println!("State")
+                        LIRelation::State => final_state = Some(f),
+                    }
+                }
+
+                if let Some(state_a) = merge_state.take() {
+                    if let Some(state_b) = final_state.take() {
+                        gg.connect_states(&state_a.id, &state_b.id, &li.morph).await?;
                     }
                 }
             }
@@ -257,11 +266,13 @@ pub mod mg {
                             relation = LIRelation::LMerge;
                             id = feature[1..feature.len()].to_string();
                             li.bundle.push(Feature { raw: feature.clone(), id: id.clone(), rel: LIRelation::LMerge });
+                            self.states.insert(id.clone());
                         }
                         else if feature.ends_with("=") {
                             relation = LIRelation::RMerge;
                             id = feature[..feature.len() - 1].to_string();
                             li.bundle.push(Feature { raw: feature.clone(), id: id.clone(), rel: LIRelation::RMerge });
+                            self.states.insert(id.clone());
                         }
                         else if feature.starts_with("-") {
                             relation = LIRelation::MinusMove;
@@ -276,8 +287,10 @@ pub mod mg {
                         else {
                             id = feature.to_string();
                             li.bundle.push(Feature { raw: feature.clone(), id: id.clone(), rel: LIRelation::State });
+                            self.states.insert(id.clone());
                         }
-                        self.states.insert(id.clone());
+
+
                         
                         println!("-{}-", feature.to_string());
                     }
