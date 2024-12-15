@@ -8,7 +8,16 @@ use std::io;
 // Import your grammar calculation logic
 mod grammar;
 mod calculator;
+mod mg;
+use dotenv::dotenv;
+use std::env;
 use calculator::Calculate;
+use mg::mg::GrammarGraph;
+use mg::mg::Edge;
+use mg::mg::MGParser;
+use mg::mg::LexicalItem;
+use mg::mg::LIRelation;
+
 
 // Define a struct for the input
 #[derive(Deserialize)]
@@ -33,6 +42,29 @@ async fn calculate_size(input: web::Json<GrammarInput>) -> HttpResponse {
     let calculator: calculator::GrammarSizeCalculator = calculator::GrammarSizeCalculator;
     let size: f64 = calculator.get_grammar_size(&grammar, false);
     let response = GrammarSizeResponse { size };
+
+    // shove some code in here to see if it works
+    let mut mg_parser: MGParser = MGParser::new();
+    mg_parser.parse_grammar_representation(&input.grammar);
+    mg_parser.to_json();
+
+    dotenv().ok();
+    let secret_key = env::var("PASSWORD")
+        .expect("The database password must be set in a .env file.");
+
+    let grammar_graph = match GrammarGraph::new(
+        "neo4j://localhost:7687",
+        "neo4j",
+        secret_key.as_str(),
+        "Minimalist Grammar",
+    ).await {
+        Ok(g) => g,
+        Err(e) => panic!("{}", e),
+    };
+    // create_example(grammar_graph).await?;
+    grammar_graph.clear().await;
+    mg_parser.create_grammar_graph(&grammar_graph).await;
+    println!("Updated the grammar graph.");
 
     // Return the size as a JSON response
     HttpResponse::Ok().json(response)
