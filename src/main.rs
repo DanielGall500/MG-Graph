@@ -12,11 +12,11 @@ mod mg;
 use dotenv::dotenv;
 use std::env;
 use calculator::Calculate;
-use mg::mg::GrammarGraph;
-use mg::mg::Edge;
-use mg::mg::MGParser;
-use mg::mg::LexicalItem;
-use mg::mg::LIRelation;
+use mg::GrammarGraph;
+use mg::Edge;
+use mg::MGParser;
+use mg::LexicalItem;
+use mg::LIRelation;
 
 
 // Define a struct for the input
