@@ -1,4 +1,7 @@
 <template>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  </head>
   <div id="app" class="container">
     <h1 class="display-4 text-primary mt-5">Minimalist Grammar Editor</h1>
     <form @submit.prevent="submitGrammar" class="mt-4 p-4 rounded shadow-sm bg-light">
@@ -8,10 +11,12 @@
           class="form-control"
           placeholder="Enter your grammar here..."
           rows="8"
+          required
         ></textarea>
       </div>
       <button type="submit" class="btn btn-primary btn-block">Process</button>
     </form>
+    <SideBar />
 
     <div v-if="size !== null" class="mt-4 p-3 bg-success text-white rounded shadow-sm">
       <h2>Grammar Size: <span class="font-weight-bold">{{ size }}</span></h2>
@@ -21,12 +26,16 @@
 </template>
 
 <script>
+import SideBar from './components/SideBar.vue';
 export default {
   data() {
     return {
       grammar: '', // Store the user's grammar input
       size: null, // Store the calculated size
     };
+  },
+  components: {
+    SideBar
   },
   methods: {
     async submitGrammar() {

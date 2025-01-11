@@ -9,6 +9,9 @@
   },
   "dependencies": {
     "@vue/compiler-sfc": "^3.5.13",
+    "axios": "^1.7.9",
+    "bootstrap": "^5.3.3",
+    "bootstrap-vue": "^2.23.1",
     "core-js": "^3.8.3",
     "vue": "^3.5.13"
   },
@@ -36,11 +39,5 @@
       "no-console": "warn",
       "no-unused-vars": "error"
     }
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead",
-    "not ie 11"
-  ]
+  }
 }

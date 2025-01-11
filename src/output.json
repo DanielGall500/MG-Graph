@@ -1,0 +1,101 @@
+[
+  {
+    "morph": "Mary",
+    "bundle": [
+      {
+        "raw": "d",
+        "id": "d",
+        "rel": "State"
+      },
+      {
+        "raw": "-k",
+        "id": "k",
+        "rel": "MinusMove"
+      }
+    ]
+  },
+  {
+    "morph": "laughs",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "laughed",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "jumps",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "jumped",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "",
+    "bundle": []
+  }
+]

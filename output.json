@@ -1,91 +1,17 @@
 [
   {
-    "morph": "Mary",
+    "morph": "ride",
     "bundle": [
       {
-        "raw": "d",
-        "id": "d",
-        "rel": "State"
-      },
-      {
-        "raw": "-k",
-        "id": "k",
-        "rel": "MinusMove"
-      }
-    ]
-  },
-  {
-    "morph": "laugh",
-    "bundle": [
-      {
-        "raw": "=d",
-        "id": "d",
+        "raw": "=Sam",
+        "id": "Sam",
         "rel": "LMerge"
       },
       {
-        "raw": "v",
-        "id": "v",
+        "raw": "Daniel",
+        "id": "Daniel",
         "rel": "State"
       }
     ]
-  },
-  {
-    "morph": "jump",
-    "bundle": [
-      {
-        "raw": "=d",
-        "id": "d",
-        "rel": "LMerge"
-      },
-      {
-        "raw": "v",
-        "id": "v",
-        "rel": "State"
-      }
-    ]
-  },
-  {
-    "morph": "-s",
-    "bundle": [
-      {
-        "raw": "=v",
-        "id": "v",
-        "rel": "LMerge"
-      },
-      {
-        "raw": "+k",
-        "id": "k",
-        "rel": "PlusMove"
-      },
-      {
-        "raw": "t",
-        "id": "t",
-        "rel": "State"
-      }
-    ]
-  },
-  {
-    "morph": "-ed",
-    "bundle": [
-      {
-        "raw": "=v",
-        "id": "v",
-        "rel": "LMerge"
-      },
-      {
-        "raw": "+k",
-        "id": "k",
-        "rel": "PlusMove"
-      },
-      {
-        "raw": "t",
-        "id": "t",
-        "rel": "State"
-      }
-    ]
-  },
-  {
-    "morph": "",
-    "bundle": []
   }
 ]
