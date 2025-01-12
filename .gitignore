@@ -21,3 +21,80 @@ Cargo.lock
 #.idea/
 .env
 package-lock.json
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+logs
+*.log
+*.log.*
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Vite
+dist/
+.vite/
+.vitepress/cache/
+.vitepress/dist/
+
+# Typescript
+*.tsbuildinfo
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.Trash-*
+
+# Other system files
+*.~undo-tree~
+*.un~
+*.swp
+*.swo
+*~
+
+# Test coverage
+coverage/
+*.lcov
+
+# PrimeVue CSS files (compiled/generated)
+public/primevue-theme.css
+src/assets/primevue-theme.css
+
+# Optional: Ignore Storybook (if used)
+.storybook/
+storybook-static/
+
+# Optional: Ignore build tools cache
+.eslintcache
+stylelintcache
