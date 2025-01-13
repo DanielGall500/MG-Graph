@@ -13,6 +13,10 @@ function submitMG(text: string) {
   mgTextValue.value = "";
 }
 
+function clearTextBox() {
+    mgTextValue.value = "";
+}
+
 </script>
 
 <template>
@@ -80,19 +84,41 @@ function submitMG(text: string) {
         <Divider layout="vertical"/>
       </div>
       <div class="flex justify-content-right">
-        <Card style="width: 50rem; overflow: hidden">
+        <Card style="width: 80rem; overflow: hidden">
             <template #title>Minimalist Grammar Editor</template>
             <template #content>
-              <div class="flex justify-content-center">
-                <Dropdown v-model="selectedCity" :options="sizeAlgorithms" optionLabel="name" placeholder="Size Algorithm" checkmark :highlightOnSelect="false" class="w-full md:w-14rem" />
-                <Textarea v-model="mgTextValue" autoResize rows="5" cols="30" />
-                <Button label="Submit" @click="submitMG"></Button>
+              <p class="m-0">
+                Input your grammar below and submit in order to generate its di-graph representation. 
+                Please use two colons to separate phonological forms from feature bundles and end each lexical item with a semi-colon.
+                For instance,
+                <br><br>
+                Mary :: d -k;
+                <br>
+                laugh :: =d v;
+                <br>
+                jump :: =d v;
+                <br>
+                -s :: =>v +k t;
+                <br>
+                -ed :: =>v +k t;
+                <br><br>
+                You can additionally choose the algorithm you would like to use to calculate the grammar size.
+              </p>
+
+              <Divider />
+              <div class="flex justify-content-center" style="flex-direction: column; gap: 25px;">
+                <div>
+                    <Dropdown v-model="selectedCity" :options="sizeAlgorithms" optionLabel="name" placeholder="Size Algorithm" checkmark :highlightOnSelect="false" class="w-full md:w-14rem" />
+                </div>
+                    <Textarea v-model="mgTextValue" autoResize rows="20" cols="20" />
+                <div>
+                </div>
               </div>
             </template>
             <template #footer>
-              <div class="flex gap-3 mt-1">
-                <Button label="Cancel" severity="secondary" outlined class="w-full" />
-                <Button label="Save" class="w-full" />
+              <div class="flex gap-3 mt-1" style="width: 30em;">
+                <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearTextBox"/>
+                <Button label="Submit" class="w-full" @click="clearTextBox"/>
               </div>
             </template>
         </Card>
