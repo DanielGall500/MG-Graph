@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import GraphVis from '@/components/GraphVis.vue'
 
 const selectedCity = ref();
 const sizeAlgorithms = ref([
@@ -10,10 +11,6 @@ const visible = ref(false);
 const mgTextValue = ref("");
 const mgSize = ref(0);
 const responseNotification = ref("");
-
-function submitMG(text: string) {
-  mgTextValue.value = "";
-}
 
 function clearGrammarTextBox() {
     mgTextValue.value = "";
@@ -47,7 +44,7 @@ const submitGrammar = async (): Promise<string> => {
 </script>
 
 <template>
-  <div class="flex">
+  <div class="flex flex-wrap">
   <div class="card flex justify-content-left">
           <div class="flex flex-column h-full">
               <div class="flex align-items-center justify-content-between px-4 pt-3 flex-shrink-0">
@@ -152,5 +149,6 @@ const submitGrammar = async (): Promise<string> => {
             </template>
         </Card>
       </div>
+      <GraphVis />
     </div>
 </template>
