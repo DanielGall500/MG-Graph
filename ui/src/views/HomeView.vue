@@ -8,15 +8,42 @@ const sizeAlgorithms = ref([
 ]);
 const visible = ref(false);
 const mgTextValue = ref("");
+const mgSize = ref(0);
+const responseNotification = ref("");
 
 function submitMG(text: string) {
   mgTextValue.value = "";
 }
 
-function clearTextBox() {
+function clearGrammarTextBox() {
     mgTextValue.value = "";
 }
 
+function setMGSize(size: number) {
+    mgSize.value = size;
+}
+
+const submitGrammar = async (): Promise<string> => {
+    try {
+        const response = await fetch('http://127.0.0.1:8000/calculate', { // Adjust the URL as necessary
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ grammar: mgTextValue.value }), // Send the grammar to the backend
+        });
+        const data = await response.json();
+        clearGrammarTextBox()
+        setMGSize(data.size);
+        responseNotification.value = "Success!"
+        return "Success!"
+    } catch (error: any) {
+        console.error('Error:', error);
+        clearGrammarTextBox()
+        responseNotification.value = error; 
+        return "Failed."
+    }
+}
 </script>
 
 <template>
@@ -117,9 +144,11 @@ function clearTextBox() {
             </template>
             <template #footer>
               <div class="flex gap-3 mt-1" style="width: 30em;">
-                <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearTextBox"/>
-                <Button label="Submit" class="w-full" @click="clearTextBox"/>
+                <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
+                <Button label="Submit" class="w-full" @click="submitGrammar"/>
               </div>
+              <h1>{{  mgSize  }}</h1>
+              <h1>{{  responseNotification  }}</h1>
             </template>
         </Card>
       </div>
