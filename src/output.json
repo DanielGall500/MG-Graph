@@ -15,6 +15,321 @@
     ]
   },
   {
+    "morph": "willd",
+    "bundle": [
+      {
+        "raw": "=v",
+        "id": "v",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "wills",
+    "bundle": [
+      {
+        "raw": "=v",
+        "id": "v",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "have",
+    "bundle": [
+      {
+        "raw": "=perf",
+        "id": "perf",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "v",
+        "id": "v",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "haved",
+    "bundle": [
+      {
+        "raw": "=perf",
+        "id": "perf",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "haves",
+    "bundle": [
+      {
+        "raw": "=perf",
+        "id": "perf",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "be",
+    "bundle": [
+      {
+        "raw": "=prog",
+        "id": "prog",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "v",
+        "id": "v",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "bed",
+    "bundle": [
+      {
+        "raw": "=prog",
+        "id": "prog",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "ben",
+    "bundle": [
+      {
+        "raw": "=prog",
+        "id": "prog",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "perf",
+        "id": "perf",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "bes",
+    "bundle": [
+      {
+        "raw": "=prog",
+        "id": "prog",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "dance",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "v",
+        "id": "v",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "danced",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "danceing",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "prog",
+        "id": "prog",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "dancen",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "perf",
+        "id": "perf",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "dances",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "laugh",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "v",
+        "id": "v",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "laughd",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "laughing",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "prog",
+        "id": "prog",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "laughn",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "perf",
+        "id": "perf",
+        "rel": "State"
+      }
+    ]
+  },
+  {
     "morph": "laughs",
     "bundle": [
       {
@@ -35,8 +350,43 @@
     ]
   },
   {
-    "morph": "laughed",
+    "morph": "hug",
     "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "v",
+        "id": "v",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "hugd",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
       {
         "raw": "=d",
         "id": "d",
@@ -55,8 +405,68 @@
     ]
   },
   {
-    "morph": "jumps",
+    "morph": "huging",
     "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "prog",
+        "id": "prog",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "hugn",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "perf",
+        "id": "perf",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "hugs",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
       {
         "raw": "=d",
         "id": "d",
@@ -75,8 +485,123 @@
     ]
   },
   {
-    "morph": "jumped",
+    "morph": "praise",
     "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "v",
+        "id": "v",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "praised",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "t",
+        "id": "t",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "praiseing",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "prog",
+        "id": "prog",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "praisen",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "perf",
+        "id": "perf",
+        "rel": "State"
+      }
+    ]
+  },
+  {
+    "morph": "praises",
+    "bundle": [
+      {
+        "raw": "=d",
+        "id": "d",
+        "rel": "LMerge"
+      },
+      {
+        "raw": "+k",
+        "id": "k",
+        "rel": "PlusMove"
+      },
       {
         "raw": "=d",
         "id": "d",
