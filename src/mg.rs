@@ -14,6 +14,8 @@ pub struct GeneralGraph {
 impl GeneralGraph {
     pub async fn new(db_id: &str, username: &str, password: &str) -> Result<Self, Box<dyn Error>> {
         let graph = Graph::new(db_id, username, password).await?;
+        println!("{}", username);
+        println!("{}", password);
         println!("Connected to database.");
         Ok(Self{ graph })
     }

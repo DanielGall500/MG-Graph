@@ -1,5 +1,5 @@
 // src/main.rs
-use actix_web::{get, http, web, App, post, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{get, http, web, App, post, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_cors::Cors;
 use actix_web::{http::header, middleware::Logger};
 use serde::{Deserialize, Serialize};
@@ -13,10 +13,7 @@ use dotenv::dotenv;
 use std::env;
 use calculator::Calculate;
 use mg::GrammarGraph;
-use mg::Edge;
 use mg::MGParser;
-use mg::LexicalItem;
-use mg::LIRelation;
 
 
 // Define a struct for the input
@@ -31,9 +28,13 @@ struct GrammarSizeResponse {
     size: f64,
 }
 
+#[get("/health")]
+async fn health_check() -> impl Responder {
+    "Service is up and running!"
+}
+
 #[post("/calculate")]
 async fn calculate_size(input: web::Json<GrammarInput>) -> HttpResponse {
-    // Calculate the grammar size using your function
     let grammar = match grammar::Grammar::new(&input.grammar, 26, 7, ';') {
         Ok(g) => g, // If successful, bind the grammar to `g`
         Err(e) => panic!("Failed to create Grammar: {}", e), 
@@ -70,18 +71,14 @@ async fn calculate_size(input: web::Json<GrammarInput>) -> HttpResponse {
     HttpResponse::Ok().json(response)
 }
 
-#[get("/index.html")]
-async fn index(req: HttpRequest) -> &'static str {
-    "<p>Hello World!</p>"
-}
-
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(
                 Cors::default()
-                    .allowed_origin("http://localhost:8080")
+                    // .allowed_origin("http://localhost:8080") // accepts this origin
+                    .allow_any_origin()
                     .allowed_methods(vec!["GET", "POST"])
                     .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
                     .allowed_header(header::CONTENT_TYPE)
@@ -90,8 +87,9 @@ async fn main() -> io::Result<()> {
             )
             .wrap(Logger::default())
             .service(calculate_size)
+            .service(health_check)
     })
-    .bind(("127.0.0.1", 8000))?
+    .bind(("127.0.0.1", 8000))? // the actual route that it is hosted on
     .workers(2)
     .run()
     .await
