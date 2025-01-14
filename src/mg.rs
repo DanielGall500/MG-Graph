@@ -32,10 +32,10 @@ impl GeneralGraph {
         Ok(())
     }
 
-    pub async fn set_node_property(&self, node_type: &str, node_id_key: &str, node_id_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
+    pub async fn set_node_property(&self, category: &str, node_id_key: &str, node_id_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
         let set_node_property_query = format!(
             "MATCH (n:{} {{ {}: {} }}) SET n.{} = {} RETURN n",
-            node_type, node_id_key, node_id_val, property_key, property_val
+            category, node_id_key, node_id_val, property_key, property_val
         );
 
         self.graph.run(query(set_node_property_query.as_str())).await?;
@@ -95,6 +95,11 @@ impl GrammarGraph {
         graph_title: &str) -> Result<Self, Box<dyn Error>> {
         let base = GeneralGraph::new(db_id, username, password).await?;
         Ok(Self { base, graph_title: graph_title.to_string() })
+    }
+
+    pub async fn set_state_property(&self, name: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{
+        self.base.set_node_property("State", "name", name, prop_key, prop_val).await?;
+        Ok(())
     }
 
     pub async fn create_state(&self, name: &str) -> Result<(), Box<dyn Error>> {
@@ -179,8 +184,6 @@ pub struct MGParser {
     pub mg: Vec<LexicalItem>
 }
 
-
-
 #[derive(Serialize, Deserialize)]
 pub enum LIRelation {
     LMerge,
@@ -205,20 +208,33 @@ impl MGParser {
         }
         let mut merge_state: Option<&Feature> = None;
         let mut final_state: Option<&Feature> = None;
+        let mut movement: Option<&Feature> = None;
         for li in &self.mg {
             for f in &li.bundle {
                 match f.rel {
                     LIRelation::LMerge => merge_state = Some(f),
                     LIRelation::RMerge => merge_state = Some(f),
-                    LIRelation::PlusMove => println!("+ Move"),
-                    LIRelation::MinusMove => println!("- Move"),
+                    LIRelation::PlusMove => movement = Some(f),
+                    LIRelation::MinusMove => movement = Some(f),
                     LIRelation::State => final_state = Some(f),
                 }
+            }
+            if let Some(movement_feature) = movement.take() {
+                /* Need to define what defines a state as having a move feature. */
+                /* 2 Scenarios:
+                LI :: d -k
+                LI :: =d +k t
+                it's associated with whichever lexical item? Yes!
+                Search for that LI and you'll find what to attach the property to
+                 */
+                // TODO: Make this able to accept an array of movement operations
+                gg.set_state_property(&li.morph, "move", &movement_feature.raw).await?;
             }
 
             if let Some(state_a) = merge_state.take() {
                 if let Some(state_b) = final_state.take() {
                     gg.connect_states(&state_a.id, &state_b.id, &li.morph).await?;
+
                 }
             }
         }
