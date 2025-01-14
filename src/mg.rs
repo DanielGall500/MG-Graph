@@ -34,11 +34,21 @@ impl GeneralGraph {
 
     pub async fn set_node_property(&self, category: &str, node_id_key: &str, node_id_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
         let set_node_property_query = format!(
-            "MATCH (n:{} {{ {}: {} }}) SET n.{} = {} RETURN n",
+            "MATCH (n:{} {{ {}: \"{}\" }}) SET n.{} = \"{}\" RETURN n",
             category, node_id_key, node_id_val, property_key, property_val
         );
-
+        println!("Running Node Property: {}", set_node_property_query);
         self.graph.run(query(set_node_property_query.as_str())).await?;
+        Ok(())
+    }
+
+    pub async fn set_relationship_property(&self, rel_id: &str, rel_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
+        let set_rel_property_query: String = format!(
+            "MATCH ()-[r]->() WHERE r.{} = \"{}\" SET r.{} = \"{}\" RETURN r",
+            rel_id, rel_val, property_key, property_val
+        );
+        println!("Running Rel Property: {}", set_rel_property_query);
+        self.graph.run(query(set_rel_property_query.as_str())).await?;
         Ok(())
     }
 
@@ -97,8 +107,15 @@ impl GrammarGraph {
         Ok(Self { base, graph_title: graph_title.to_string() })
     }
 
-    pub async fn set_state_property(&self, name: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{
-        self.base.set_node_property("State", "name", name, prop_key, prop_val).await?;
+    pub async fn set_state_property(&self, label_id: &str, label_val: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{
+        println!("Setting State Property");
+        self.base.set_node_property("State", label_id, label_val, prop_key, prop_val).await?;
+        Ok(())
+    }
+
+    pub async fn set_merge_property(&self, li_morph: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{
+        println!("Setting Relationship Property");
+        self.base.set_relationship_property("li", li_morph, prop_key, prop_val).await?;
         Ok(())
     }
 
@@ -209,8 +226,17 @@ impl MGParser {
         let mut merge_state: Option<&Feature> = None;
         let mut final_state: Option<&Feature> = None;
         let mut movement: Option<&Feature> = None;
+        let mut is_head: bool = false;
         for li in &self.mg {
-            for f in &li.bundle {
+            // check if this new lexical item is a head or not
+            println!("Next LI: {}", li.morph);
+            
+
+            for (i, f) in li.bundle.iter().enumerate() {
+                println!("Feature: {}", f.raw);
+                // if the first feature is left or right merge, the LI is a head
+                is_head = (i==0) && matches!(f.rel, LIRelation::LMerge) || matches!(f.rel, LIRelation::RMerge);
+
                 match f.rel {
                     LIRelation::LMerge => merge_state = Some(f),
                     LIRelation::RMerge => merge_state = Some(f),
@@ -219,6 +245,7 @@ impl MGParser {
                     LIRelation::State => final_state = Some(f),
                 }
             }
+            /*
             if let Some(movement_feature) = movement.take() {
                 /* Need to define what defines a state as having a move feature. */
                 /* 2 Scenarios:
@@ -226,15 +253,30 @@ impl MGParser {
                 LI :: =d +k t
                 it's associated with whichever lexical item? Yes!
                 Search for that LI and you'll find what to attach the property to
+
+                The LI is associated with the last state that it finds itself in.
                  */
                 // TODO: Make this able to accept an array of movement operations
                 gg.set_state_property(&li.morph, "move", &movement_feature.raw).await?;
             }
 
-            if let Some(state_a) = merge_state.take() {
-                if let Some(state_b) = final_state.take() {
-                    gg.connect_states(&state_a.id, &state_b.id, &li.morph).await?;
+             */
 
+            println!("Connecting States");
+            // there should at least be a final state, either one it becomes after feature checking
+            // or one that it currently is with leftover features
+            if let Some(state_b) = final_state.take() {
+                println!("Setting State Property For {}", li.morph);
+
+                if (is_head) {
+                    gg.set_state_property("name", &state_b.raw, "move", "++k").await?;
+                }
+                else {
+                    gg.set_merge_property(&li.morph, "move", "++k").await?;
+                }
+
+                if let Some(state_a) = merge_state.take() {
+                    gg.connect_states(&state_a.id, &state_b.id, &li.morph).await?;
                 }
             }
         }
