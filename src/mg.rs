@@ -34,7 +34,7 @@ impl GeneralGraph {
 
     pub async fn set_node_property(&self, category: &str, node_id_key: &str, node_id_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
         let set_node_property_query = format!(
-            "MATCH (n:{} {{ {}: \"{}\" }}) SET n.{} = \"{}\" RETURN n",
+            "MATCH (n:{} {{ {}: \"{}\" }}) SET n.{} = \"{}\"; ",
             category, node_id_key, node_id_val, property_key, property_val
         );
         println!("Running Node Property: {}", set_node_property_query);
@@ -44,7 +44,7 @@ impl GeneralGraph {
 
     pub async fn set_relationship_property(&self, rel_id: &str, rel_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
         let set_rel_property_query: String = format!(
-            "MATCH ()-[r]->() WHERE r.{} = \"{}\" SET r.{} = \"{}\" RETURN r",
+            "MATCH ()-[r]->() WHERE r.{} = \"{}\" SET r.{} = \"{}\"; ",
             rel_id, rel_val, property_key, property_val
         );
         println!("Running Rel Property: {}", set_rel_property_query);
@@ -219,29 +219,38 @@ impl MGParser {
     }
 
     pub async fn create_grammar_graph(&mut self, gg: &GrammarGraph) -> Result<(), Box<dyn Error>> {
+        let mut merge_state: Option<&Feature>;
+        let mut final_state: Option<&Feature>;
+        let mut move_hoover: Option<&Feature>;
+        let mut is_head: bool;
+
+        // first handle LIs with no selectional features
         for li in &self.states {
             /* Create nodes with the states */
             gg.create_state(li.as_str()).await?;
         }
-        let mut merge_state: Option<&Feature> = None;
-        let mut final_state: Option<&Feature> = None;
-        let mut movement: Option<&Feature> = None;
-        let mut is_head: bool = false;
+
         for li in &self.mg {
             // check if this new lexical item is a head or not
             println!("Next LI: {}", li.morph);
+            merge_state = None;
+            final_state = None;
+            move_hoover = None;
+            is_head = false;
             
 
             for (i, f) in li.bundle.iter().enumerate() {
                 println!("Feature: {}", f.raw);
                 // if the first feature is left or right merge, the LI is a head
-                is_head = (i==0) && matches!(f.rel, LIRelation::LMerge) || matches!(f.rel, LIRelation::RMerge);
+                if i == 0 {
+                    is_head = matches!(f.rel, LIRelation::LMerge) || matches!(f.rel, LIRelation::RMerge);
+                }
 
                 match f.rel {
                     LIRelation::LMerge => merge_state = Some(f),
                     LIRelation::RMerge => merge_state = Some(f),
-                    LIRelation::PlusMove => movement = Some(f),
-                    LIRelation::MinusMove => movement = Some(f),
+                    LIRelation::PlusMove => move_hoover = Some(f),
+                    LIRelation::MinusMove => move_hoover = Some(f),
                     LIRelation::State => final_state = Some(f),
                 }
             }
@@ -266,17 +275,23 @@ impl MGParser {
             // there should at least be a final state, either one it becomes after feature checking
             // or one that it currently is with leftover features
             if let Some(state_b) = final_state.take() {
-                println!("Setting State Property For {}", li.morph);
+                println!("Setting Property For {}", li.morph);
 
-                if (is_head) {
-                    gg.set_state_property("name", &state_b.raw, "move", "++k").await?;
-                }
-                else {
-                    gg.set_merge_property(&li.morph, "move", "++k").await?;
-                }
-
+                // create a relationship between a potential state A and B (handles LIs with selectional features)
                 if let Some(state_a) = merge_state.take() {
                     gg.connect_states(&state_a.id, &state_b.id, &li.morph).await?;
+                }
+
+                // attach any movement features to the newly created relationship
+                if let Some(movement) = move_hoover.take() {
+                    if (!is_head) {
+                        println!("IS NOT HEAD");
+                        gg.set_state_property("name", &state_b.raw, "move", &movement.raw).await?;
+                    }
+                    else {
+                        println!("IS HEAD");
+                        gg.set_merge_property(&li.morph, "move", &movement.raw).await?;
+                    }
                 }
             }
         }
