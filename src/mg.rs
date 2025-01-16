@@ -254,22 +254,6 @@ impl MGParser {
                     LIRelation::State => final_state = Some(f),
                 }
             }
-            /*
-            if let Some(movement_feature) = movement.take() {
-                /* Need to define what defines a state as having a move feature. */
-                /* 2 Scenarios:
-                LI :: d -k
-                LI :: =d +k t
-                it's associated with whichever lexical item? Yes!
-                Search for that LI and you'll find what to attach the property to
-
-                The LI is associated with the last state that it finds itself in.
-                 */
-                // TODO: Make this able to accept an array of movement operations
-                gg.set_state_property(&li.morph, "move", &movement_feature.raw).await?;
-            }
-
-             */
 
             println!("Connecting States");
             // there should at least be a final state, either one it becomes after feature checking
@@ -284,13 +268,15 @@ impl MGParser {
 
                 // attach any movement features to the newly created relationship
                 if let Some(movement) = move_hoover.take() {
-                    if (!is_head) {
-                        println!("IS NOT HEAD");
-                        gg.set_state_property("name", &state_b.raw, "move", &movement.raw).await?;
+                    if (is_head) {
+                        // heads are represented as a relationship and as such the property
+                        // of a relationship is set
+                        gg.set_merge_property(&li.morph, "move", &movement.raw).await?;
                     }
                     else {
-                        println!("IS HEAD");
-                        gg.set_merge_property(&li.morph, "move", &movement.raw).await?;
+                        // non-heads are represented as a state and as such the property
+                        // of a state / node is set
+                        gg.set_state_property("name", &state_b.raw, "move", &movement.raw).await?;
                     }
                 }
             }
