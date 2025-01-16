@@ -1,10 +1,6 @@
 <template>
   <div>
-    <h1>Neo4j Graph Visualization</h1>
-    <h1>{{ status }}</h1>
-    <div id="viz"></div>
-    <Button @click="reload">Reload</Button>
-
+    <div id="graph-vis-box"></div>
   </div>
 </template>
 
@@ -18,17 +14,17 @@ import NeoVis from 'neovis.js/dist/neovis.js';
 
 const passwordEnvVariable = "almonds1" // process.env.PASSWORD;
 
-const containerId = "graph-container"
+const containerId = "graph-vis-box"
 const serverUsername = "neo4j"
 const serverPassword = passwordEnvVariable
 const serverURL = "bolt://localhost:7687/"
 
 const status = ref()
 
-function reload() {
+function reload_vis() {
   try {
     const vis = new NeoVis({
-        containerId: "viz",
+        containerId: "graph-vis-box",
         neo4j: {
             serverUrl: serverURL,
             serverUser: serverUsername,
@@ -83,10 +79,14 @@ function reload() {
     status.value = error
   }
 }
+
+defineExpose({
+  reload_vis
+});
 </script>
 
 <style scoped>
-#viz {
+#graph-vis-box {
   width: 900px;
   height: 700px;
   border: 1px solid lightgray;

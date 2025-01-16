@@ -1,16 +1,27 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import GraphVis from '@/components/GraphVis.vue'
+import { RefSymbol } from "@vue/reactivity";
 
 const selectedCity = ref();
 const sizeAlgorithms = ref([
   { name: "Ermolaeva", code: "ERM" },
   { name: "Simple", code: "SP" },
 ]);
+const tabs = ref([
+    { title: 'Editor', value: '0' },
+    { title: 'Visualisation', value: '1' },
+]);
+const items = ref([
+    { name: 'Editor', image: 'amyelsner.png' },
+    { name: 'Visualisation', image: 'annafali.png' },
+]);
 const visible = ref(false);
 const mgTextValue = ref("");
 const mgSize = ref(0);
 const responseNotification = ref("");
+const activeTab = ref(0);
+const graph_vis = ref();
 
 function clearGrammarTextBox() {
     mgTextValue.value = "";
@@ -20,8 +31,17 @@ function setMGSize(size: number) {
     mgSize.value = size;
 }
 
+function switchTab() {
+    activeTab.value = 1;
+}
+
+function reload() {
+    graph_vis.value.reload_vis();
+}
+
 const submitGrammar = async (): Promise<string> => {
     try {
+        // communicate with backend MG API
         const response = await fetch('http://127.0.0.1:8000/calculate', { // Adjust the URL as necessary
             method: 'POST',
             headers: {
@@ -30,7 +50,13 @@ const submitGrammar = async (): Promise<string> => {
             body: JSON.stringify({ grammar: mgTextValue.value }), // Send the grammar to the backend
         });
         const data = await response.json();
+
+        // update the frontend
         clearGrammarTextBox()
+        switchTab();
+        reload();
+
+        // set the updated values for grammar
         setMGSize(data.size);
         responseNotification.value = "Success!"
         return "Success!"
@@ -107,48 +133,60 @@ const submitGrammar = async (): Promise<string> => {
         </div>
         <Divider layout="vertical"/>
       </div>
-      <div class="flex justify-content-right">
-        <Card style="width: 80rem; overflow: hidden">
-            <template #title>Minimalist Grammar Editor</template>
-            <template #content>
-              <p class="m-0">
-                Input your grammar below and submit in order to generate its di-graph representation. 
-                Please use two colons to separate phonological forms from feature bundles and end each lexical item with a semi-colon.
-                For instance,
-                <br><br>
-                Mary :: d -k;
-                <br>
-                laugh :: =d v;
-                <br>
-                jump :: =d v;
-                <br>
-                -s :: =>v +k t;
-                <br>
-                -ed :: =>v +k t;
-                <br><br>
-                You can additionally choose the algorithm you would like to use to calculate the grammar size.
-              </p>
 
-              <Divider />
-              <div class="flex justify-content-center" style="flex-direction: column; gap: 25px;">
-                <div>
-                    <Dropdown v-model="selectedCity" :options="sizeAlgorithms" optionLabel="name" placeholder="Size Algorithm" checkmark :highlightOnSelect="false" class="w-full md:w-14rem" />
-                </div>
-                    <Textarea v-model="mgTextValue" autoResize rows="20" cols="20" />
-                <div>
-                </div>
-              </div>
-            </template>
-            <template #footer>
-              <div class="flex gap-3 mt-1" style="width: 30em;">
-                <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
-                <Button label="Submit" class="w-full" @click="submitGrammar"/>
-              </div>
-              <h1>{{  mgSize  }}</h1>
-              <h1>{{  responseNotification  }}</h1>
-            </template>
-        </Card>
-      </div>
-      <GraphVis />
+    <TabView @tab-change="reload" :active-index="activeTab">
+        <!-- Editor Tab -->
+        <TabPanel header="Editor" :activeIndex="activeTab">
+            <div class="flex justify-content-right">
+                <Card style="width: 80rem; overflow: hidden">
+                    <template #title>Minimalist Grammar Editor</template>
+                    <template #content>
+                    <p class="m-0">
+                        Input your grammar below and submit in order to generate its di-graph representation. 
+                        Please use two colons to separate phonological forms from feature bundles and end each lexical item with a semi-colon.
+                        For instance,
+                        <br><br>
+                        Mary :: d -k;
+                        <br>
+                        laugh :: =d v;
+                        <br>
+                        jump :: =d v;
+                        <br>
+                        -s :: =>v +k t;
+                        <br>
+                        -ed :: =>v +k t;
+                        <br><br>
+                        You can additionally choose the algorithm you would like to use to calculate the grammar size.
+                    </p>
+
+                    <Divider />
+
+                    <div class="flex justify-content-center" style="flex-direction: column; gap: 25px;">
+                        <div>
+                            <Dropdown v-model="selectedCity" :options="sizeAlgorithms" optionLabel="name" placeholder="Size Algorithm" checkmark :highlightOnSelect="false" class="w-full md:w-14rem" />
+                        </div>
+                            <Textarea v-model="mgTextValue" autoResize rows="20" cols="10" />
+                        <div>
+                        </div>
+                    </div>
+                    </template>
+                    <template #footer>
+                    <div class="flex gap-3 mt-1" style="width: 30em;">
+                        <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
+                        <Button label="Submit" class="w-full" @click="submitGrammar"/>
+                    </div>
+                    </template>
+                </Card>
+            </div>
+        </TabPanel>
+
+        <!-- Visualisation Tab -->
+        <TabPanel header="Visualisation" :activeIndex="activeTab">
+            <h1>Neo4j Graph Visualization</h1>
+            <h2>Size: {{  mgSize  }}</h2>
+            <GraphVis ref="graph_vis"/>
+        </TabPanel>
+    </TabView>
+
     </div>
 </template>
