@@ -232,7 +232,6 @@ impl MGParser {
 
         for li in &self.mg {
             // check if this new lexical item is a head or not
-            println!("Next LI: {}", li.morph);
             merge_state = None;
             final_state = None;
             move_hoover = None;
@@ -240,7 +239,6 @@ impl MGParser {
             
 
             for (i, f) in li.bundle.iter().enumerate() {
-                println!("Feature: {}", f.raw);
                 // if the first feature is left or right merge, the LI is a head
                 if i == 0 {
                     is_head = matches!(f.rel, LIRelation::LMerge) || matches!(f.rel, LIRelation::RMerge);
@@ -319,10 +317,13 @@ impl MGParser {
                 let mut id: String;
 
                 for feature in individual_feature_split {
-                    let (relation, id) = if feature.starts_with("=") {
+                    let (relation, id) = 
+                    if feature.starts_with("=>") {
+                        // need to create new relation for head merge
+                        (LIRelation::LMerge, feature[2..].to_string())
+                    }
+                    else if feature.starts_with("=") {
                         (LIRelation::LMerge, feature[1..].to_string())
-                    } else if feature.starts_with("=>") {
-                        (LIRelation::LMerge, format!("-{}", &feature[2..]))
                     } else if feature.ends_with("=") {
                         (LIRelation::RMerge, feature[..feature.len() - 1].to_string())
                     } else if feature.starts_with("-") {
