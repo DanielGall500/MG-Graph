@@ -1,10 +1,10 @@
-use neo4rs::{query, Graph, Relation};
+use neo4rs::{query, Graph};
 use core::panic;
 use std::error::Error;
-use std::io::Write;
+use std::io::{Write, Read};
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
 use std::fs::File;
-use std::fs::write;
 use std::collections::HashSet;
 
 pub struct GeneralGraph {
@@ -26,6 +26,7 @@ impl GeneralGraph {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn delete_node(&self, category: &str, label_id: &str, label_val: &str) -> Result<(), Box<dyn Error>> {
         let remove_node_query = format!("MATCH (p:{} {{ {}: \"{}\" }}) DETACH DELETE p", category, label_id, label_val);
         self.graph.run(query(&remove_node_query)).await?;
@@ -63,6 +64,7 @@ impl GeneralGraph {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn remove_relationship(&self, cat_a: &str, cat_b: &str, node_a: &str, node_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
         println!("Removing {}-{}-{}", node_a, node_b, rel);
         let delete_relationship_query = format!(
@@ -73,15 +75,21 @@ impl GeneralGraph {
         Ok(())
     }
 
-    pub async fn clear(&self) -> Result<(), Box<dyn Error>> {
+    /* Empties the Graph Database */
+    pub async fn clear(&self) -> Result<(), neo4rs::Error> {
         let remove_all_query: &str = "MATCH (n) DETACH DELETE n";
-        self.graph.run(query(remove_all_query)).await?;
-        Ok(())
+        self.graph.run(query(remove_all_query))
+        .await
+        .map(|e| {
+            eprintln!("Graph Clearing Failed: {:#?}", e);
+            e
+        })
     }
 
 
 }
 
+#[allow(dead_code)]
 pub struct State<'a> {
     state_id: &'a str,
 }
@@ -94,17 +102,16 @@ pub struct Edge<'a> {
 
 pub struct GrammarGraph {
     base: GeneralGraph,
-    pub graph_title: String,
 }
 
 impl GrammarGraph {
     pub async fn new(
         db_id: &str, 
         username: &str, 
-        password: &str,
-        graph_title: &str) -> Result<Self, Box<dyn Error>> {
+        password: &str
+    ) -> Result<Self, Box<dyn Error>> {
         let base = GeneralGraph::new(db_id, username, password).await?;
-        Ok(Self { base, graph_title: graph_title.to_string() })
+        Ok(Self { base })
     }
 
     pub async fn set_state_property(&self, label_id: &str, label_val: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{
@@ -130,12 +137,14 @@ impl GrammarGraph {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn delete_edge<'a>(&self, edge: &Edge<'a>) -> Result<(), Box<dyn Error>> {
         self.base.remove_relationship("State", "State", 
         &edge.state_a_id, &edge.state_b_id, &edge.rel).await?;
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn contract_edge<'a>(&self, edge: &Edge<'a>) -> Result<(), Box<dyn Error>> {
         println!("Contracting {}-{}-{}", edge.state_a_id, edge.state_b_id, edge.rel);
         let new_node_id = format!("{}-{}", edge.state_a_id, edge.state_b_id);
@@ -174,14 +183,10 @@ impl GrammarGraph {
         Ok(())
     }
 
-    pub async fn clear(&self) -> Result<(), Box<dyn Error>> {
-        self.base.clear().await?;
-        Ok(())
+    pub async fn clear(&self) -> Result<(), neo4rs::Error> {
+        self.base.clear().await
     }
 
-    pub fn get_title(&self) -> &str {
-        &self.graph_title
-    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -209,6 +214,14 @@ pub enum LIRelation {
     PlusMove,
     State,
 }
+
+#[derive(Debug)]
+pub struct CQuery {
+    name: String,
+    query: String,
+    desc: String,
+}
+
 
 impl MGParser {
     pub fn new() -> Self {
@@ -266,7 +279,7 @@ impl MGParser {
 
                 // attach any movement features to the newly created relationship
                 if let Some(movement) = move_hoover.take() {
-                    if (is_head) {
+                    if is_head {
                         // heads are represented as a relationship and as such the property
                         // of a relationship is set
                         gg.set_merge_property(&li.morph, "move", &movement.raw).await?;
@@ -291,10 +304,38 @@ impl MGParser {
         Ok(())
     }
 
+    pub fn from_json(&self) -> Result<Vec<CQuery>, Box<dyn Error>> {
+        let mut file = File::open("queries.json")?;
+        let mut content = String::new();
+        file.read_to_string(&mut content)?;
+
+        let json: Value = serde_json::from_str(&content)?;
+
+        let mut queries: Vec<CQuery> = Vec::new();
+
+        if let Some(query_map) = json.get("queries").and_then(|q| q.as_object()) {
+            for (_, value) in query_map {
+
+                if let (Some(name), Some(query), Some(desc)) = (
+                    value.get("name").and_then(|v| v.as_str()),
+                    value.get("query").and_then(|v| v.as_str()),
+                    value.get("desc").and_then(|v| v.as_str()),
+                ) {
+                    queries.push(CQuery {
+                        query: query.to_string(),
+                        name: name.to_string(),
+                        desc: desc.to_string(),
+                    });
+                }
+            }
+        }
+        Ok(queries)
+
+    }
+
     pub fn parse_grammar_representation(&mut self, minimalist_grammar: &str) -> Result<(), Box<dyn Error>> {
         self.mg.clear();
-        let mut lexical_items: Vec<LexicalItem> = Vec::new();
-        let mut lines = minimalist_grammar.split(";");
+        let lines = minimalist_grammar.split(";");
         for l in lines.into_iter() {
             let mut li: LexicalItem = LexicalItem { morph: String::from(""), bundle: Vec::new() };
 
@@ -312,9 +353,6 @@ impl MGParser {
                 let individual_feature_split = features
                     .split_whitespace()
                     .map(|c| c.trim().to_string());
-
-                let mut relation: LIRelation = LIRelation::State;
-                let mut id: String;
 
                 for feature in individual_feature_split {
                     let (relation, id) = 

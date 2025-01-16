@@ -1,0 +1,8 @@
+[{
+  "queries": {
+        "clear_graph": {
+        "query": "MATCH (n) DETACH DELETE n",
+        "description": "Deletes all nodes and relationships from the graph."
+        }
+    }
+}]

@@ -57,14 +57,23 @@ async fn calculate_size(input: web::Json<GrammarInput>) -> HttpResponse {
         "neo4j://localhost:7687",
         "neo4j",
         secret_key.as_str(),
-        "Minimalist Grammar",
     ).await {
         Ok(g) => g,
         Err(e) => panic!("{}", e),
     };
     // create_example(grammar_graph).await?;
-    grammar_graph.clear().await;
-    mg_parser.create_grammar_graph(&grammar_graph).await;
+    let _ = Some(grammar_graph.clear().await);
+
+    let result = mg_parser.create_grammar_graph(&grammar_graph).await;
+    match result {
+        Ok(_) => {
+            println!("Query executed successfully.");
+        }
+        Err(e) => {
+            // Handle the Neo4j error here
+            eprintln!("Error running the query: {}", e);
+        }
+    }
     println!("Updated the grammar graph.");
 
     // Return the size as a JSON response
