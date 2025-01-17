@@ -335,9 +335,16 @@ impl MGParser {
 
     pub fn parse_grammar_representation(&mut self, minimalist_grammar: &str) -> Result<(), Box<dyn Error>> {
         self.mg.clear();
-        let lines = minimalist_grammar.split(";");
-        for l in lines.into_iter() {
-            let mut li: LexicalItem = LexicalItem { morph: String::from(""), bundle: Vec::new() };
+        let mut li: LexicalItem;
+
+        let mg_statements = minimalist_grammar
+            .split(";")
+            .into_iter()
+            .filter(|l| { !l.is_empty() });
+
+        for l in mg_statements {
+            println!("LINE: {}", l);
+            li = LexicalItem { morph: String::from(""), bundle: Vec::new() };
 
             // e.g laughs :: d= +k t
             let morph_feature_split: Vec<String> = l.split("::").map(|c| c.to_string()).collect();
@@ -349,6 +356,7 @@ impl MGParser {
             else {
                 panic!("Invalid MG file.");
             }
+
             if let Some(features) = morph_feature_split.get(1) {
                 let individual_feature_split = features
                     .split_whitespace()
