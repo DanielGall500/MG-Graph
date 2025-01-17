@@ -1,5 +1,4 @@
 use neo4rs::{query, Graph};
-use core::panic;
 use std::error::Error;
 use std::io::{Write, Read};
 use serde::{Serialize, Deserialize};
@@ -202,17 +201,19 @@ pub struct Feature {
 }
 
 pub struct MGParser {
-    states: HashSet<String>,
-    pub mg: Vec<LexicalItem>
+    pub mg: Vec<LexicalItem>,
+    pub states: HashSet<String>
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum LIRelation {
-    LMerge,
-    RMerge,
-    MinusMove,
-    PlusMove,
-    State,
+    LMerge, // =x
+    RMerge, // x= 
+    LMergeHead, // =>x
+    RMergeHead, // x<=
+    MinusMove, // -x
+    PlusMove, // +x
+    State, // x
 }
 
 #[derive(Debug)]
@@ -226,8 +227,8 @@ pub struct CQuery {
 impl MGParser {
     pub fn new() -> Self {
         Self{
-            states: HashSet::new(),
             mg: Vec::new(),
+            states: HashSet::new(),
         }
     }
 
@@ -235,35 +236,47 @@ impl MGParser {
         let mut merge_state: Option<&Feature>;
         let mut final_state: Option<&Feature>;
         let mut move_hoover: Option<&Feature>;
+        let mut bundle: &Vec<Feature>;
         let mut is_head: bool;
-
-        // first handle LIs with no selectional features
-        for li in &self.states {
-            /* Create nodes with the states */
-            gg.create_state(li.as_str()).await?;
-        }
 
         for li in &self.mg {
             // check if this new lexical item is a head or not
             merge_state = None;
             final_state = None;
             move_hoover = None;
-            is_head = false;
+            bundle = &li.bundle;
+
+            // if the first feature is left or right merge, the LI is a head
+            if let Some(first_feature) = bundle.first() {
+                is_head = matches!(first_feature.rel, LIRelation::LMerge) || matches!(first_feature.rel, LIRelation::RMerge);
+            }
+            else {
+                eprintln!("LI Contains No Features: {}", li.morph);
+                continue;
+            }
             
 
-            for (i, f) in li.bundle.iter().enumerate() {
-                // if the first feature is left or right merge, the LI is a head
-                if i == 0 {
-                    is_head = matches!(f.rel, LIRelation::LMerge) || matches!(f.rel, LIRelation::RMerge);
-                }
-
+            for f in bundle.iter() {
                 match f.rel {
-                    LIRelation::LMerge => merge_state = Some(f),
-                    LIRelation::RMerge => merge_state = Some(f),
-                    LIRelation::PlusMove => move_hoover = Some(f),
+                    LIRelation::LMerge | 
+                    LIRelation::RMerge | 
+                    LIRelation::LMergeHead | 
+                    LIRelation::RMergeHead => merge_state = Some(f),
+
+                    LIRelation::PlusMove | 
                     LIRelation::MinusMove => move_hoover = Some(f),
+
                     LIRelation::State => final_state = Some(f),
                 }
+
+                // STEP: ADD ANY STATES (NODES) FROM FEATURE
+                // any states found through selectional or categorial features
+                // are added as states to our MG
+                if matches!(f.rel, LIRelation::LMerge | LIRelation::State | LIRelation::RMerge) && !self.states.contains(&f.id) {
+                    self.states.insert(f.id.to_string());
+                    gg.create_state(&f.id.as_str()).await?;
+                }
+
             }
 
             println!("Connecting States");
@@ -344,24 +357,32 @@ impl MGParser {
 
         for l in mg_statements {
             println!("LINE: {}", l);
-            li = LexicalItem { morph: String::from(""), bundle: Vec::new() };
+            li = LexicalItem { 
+                morph: String::from(""), 
+                bundle: Vec::new() 
+            };
 
             // e.g laughs :: d= +k t
             let morph_feature_split: Vec<String> = l.split("::").map(|c| c.to_string()).collect();
 
+            // STEP 1: process the phonological form: e.g "Mary" in "Mary" :: d -k 
             if let Some(morph) = morph_feature_split.get(0) {
                 li.morph = morph.trim().to_string();
-                println!("Morph: {}", li.morph);
+                println!("Valid Morph: {}", li.morph);
             }
             else {
-                panic!("Invalid MG file.");
+                eprintln!("Invalid MG Statement: {}", l);
+                eprintln!("Error was found in phonological form parsing.")
             }
 
+            // STEP 2: parse the feature bundle e.g 'd -k' in "Mary" :: d -k
             if let Some(features) = morph_feature_split.get(1) {
                 let individual_feature_split = features
                     .split_whitespace()
                     .map(|c| c.trim().to_string());
 
+                // STEP 3: iterate over each feature in the LI and add
+                // to the feature bundle
                 for feature in individual_feature_split {
                     let (relation, id) = 
                     if feature.starts_with("=>") {
@@ -380,18 +401,19 @@ impl MGParser {
                         (LIRelation::State, feature.clone())
                     };
 
-                    if matches!(relation, LIRelation::LMerge | LIRelation::State | LIRelation::RMerge) {
-                        self.states.insert(id.clone());
-                    }
-
+                    // STEP 4: ADD FEATURE INFO TO LI
                     li.bundle.push(Feature {
                         raw: feature.clone(),
                         id: id.clone(),
                         rel: relation,
                     });
 
-                    println!("-{}-", feature.to_string());
+                    println!("Valid -{}-", feature.to_string());
                 }
+            }
+            else {
+                eprintln!("Invalid MG Statement: {}", l);
+                eprint!("Error was found during feature bundle parsing.")
             }
             self.mg.push(li);
         }
