@@ -1,22 +1,35 @@
 use neo4rs::{query, Graph};
 use std::error::Error;
-use std::io::{Write, Read};
+use std::io::{Write};
 use serde::{Serialize, Deserialize};
-use serde_json::Value;
 use std::fs::File;
 use std::collections::HashSet;
+use crate::cypher::{CQuery, CQueryStorage};
 
 pub struct GeneralGraph {
     graph: Graph,
+    queries: CQueryStorage
 }
 
 impl GeneralGraph {
     pub async fn new(db_id: &str, username: &str, password: &str) -> Result<Self, Box<dyn Error>> {
         let graph = Graph::new(db_id, username, password).await?;
+        let queries = CQueryStorage::new();
+
         println!("{}", username);
         println!("{}", password);
         println!("Connected to database.");
-        Ok(Self{ graph })
+
+        Ok(Self{ graph, queries })
+    }
+
+    pub async fn run(&self, q: &str) -> Result<(), neo4rs::Error> {
+        self.graph.run(query(q))
+        .await
+        .map(|e| {
+            eprintln!("Graph Query Failed: {:#?}", e);
+            e
+        })
     }
 
     pub async fn create_node(&self, category: &str, label_id: &str, label_val: &str) -> Result<(), Box<dyn Error>> {
@@ -76,16 +89,10 @@ impl GeneralGraph {
 
     /* Empties the Graph Database */
     pub async fn clear(&self) -> Result<(), neo4rs::Error> {
-        let remove_all_query: &str = "MATCH (n) DETACH DELETE n";
-        self.graph.run(query(remove_all_query))
-        .await
-        .map(|e| {
-            eprintln!("Graph Clearing Failed: {:#?}", e);
-            e
-        })
+        // let remove_all_query: &str = "MATCH (n) DETACH DELETE n";
+        let clear_graph_query: &str = &self.queries.get_clear_graph().query;
+        self.run(clear_graph_query).await
     }
-
-
 }
 
 #[allow(dead_code)]
@@ -216,14 +223,7 @@ pub enum LIRelation {
     State, // x
 }
 
-#[derive(Debug)]
-pub struct CQuery {
-    name: String,
-    query: String,
-    desc: String,
-}
-
-
+// #[derive(Debug)]
 impl MGParser {
     pub fn new() -> Self {
         Self{
@@ -317,34 +317,6 @@ impl MGParser {
         Ok(())
     }
 
-    pub fn from_json(&self) -> Result<Vec<CQuery>, Box<dyn Error>> {
-        let mut file = File::open("queries.json")?;
-        let mut content = String::new();
-        file.read_to_string(&mut content)?;
-
-        let json: Value = serde_json::from_str(&content)?;
-
-        let mut queries: Vec<CQuery> = Vec::new();
-
-        if let Some(query_map) = json.get("queries").and_then(|q| q.as_object()) {
-            for (_, value) in query_map {
-
-                if let (Some(name), Some(query), Some(desc)) = (
-                    value.get("name").and_then(|v| v.as_str()),
-                    value.get("query").and_then(|v| v.as_str()),
-                    value.get("desc").and_then(|v| v.as_str()),
-                ) {
-                    queries.push(CQuery {
-                        query: query.to_string(),
-                        name: name.to_string(),
-                        desc: desc.to_string(),
-                    });
-                }
-            }
-        }
-        Ok(queries)
-
-    }
 
     pub fn parse_grammar_representation(&mut self, minimalist_grammar: &str) -> Result<(), Box<dyn Error>> {
         self.mg.clear();

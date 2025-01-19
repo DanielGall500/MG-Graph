@@ -9,6 +9,8 @@ use std::io;
 mod grammar;
 mod calculator;
 mod mg;
+mod cypher;
+
 use dotenv::dotenv;
 use std::env;
 use calculator::Calculate;
