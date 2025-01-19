@@ -1,4 +1,4 @@
-use crate::grammar::Grammar;
+use crate::parse::grammar::Grammar;
 
 pub trait Calculate {
     fn get_grammar_size(&self, mg: &Grammar, verbose: bool) -> f64;

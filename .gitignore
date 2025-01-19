@@ -98,3 +98,6 @@ storybook-static/
 # Optional: Ignore build tools cache
 .eslintcache
 stylelintcache
+
+# output files
+*/output.json

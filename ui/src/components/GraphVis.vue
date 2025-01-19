@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div id="graph-vis-box"></div>
+    <Card :id="containerId" class="visualisation"></Card>
   </div>
 </template>
 
@@ -24,7 +24,7 @@ const status = ref()
 function reload_vis() {
   try {
     const vis = new NeoVis({
-        containerId: "graph-vis-box",
+        containerId: containerId,
         neo4j: {
             serverUrl: serverURL,
             serverUser: serverUsername,
@@ -67,13 +67,11 @@ function reload_vis() {
         relationships: {
             MERGE: {
               label: "li"
-                // value: "weight"
             }
         }
     })
-    // vis.render()
     vis.renderWithCypher("MATCH (n)-[r:MERGE]->(m) RETURN *;")
-    // vis.renderWithCypher("MATCH (n) RETURN n;")
+
   status.value = "Success"
   } catch (error) {
     status.value = error
@@ -86,10 +84,9 @@ defineExpose({
 </script>
 
 <style scoped>
-#graph-vis-box {
+.visualisation {
   width: 900px;
   height: 700px;
-  border: 1px solid lightgray;
   font: 22pt arial;
 }
 </style>

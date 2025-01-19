@@ -1,11 +1,11 @@
-use actix_web::web::delete;
 use neo4rs::{query, Graph};
 use std::error::Error;
-use std::io::{Write};
+use std::io::Write;
 use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::collections::HashSet;
-use crate::cypher::{CQuery, CQueryStorage};
+use crate::cypher::cquery::CQueryStorage;
+
 
 pub struct GeneralGraph {
     graph: Graph,
@@ -310,7 +310,7 @@ impl MGParser {
     }
 
     pub fn to_json(&self) -> Result<(), Box<dyn Error>> {
-        let mut file = File::create("output.json")?;
+        let mut file = File::create("./grammar/grammar_parsed.json")?;
         match serde_json::to_string_pretty(&self.mg) {
             Ok(json) => file.write_all(json.as_bytes())?,
             Err(e) => eprintln!("Error serializing data to JSON: {}", e),

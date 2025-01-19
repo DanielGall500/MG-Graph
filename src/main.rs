@@ -1,30 +1,26 @@
 // src/main.rs
-use actix_web::{get, http, web, App, post, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, post, 
+    HttpResponse, HttpServer, Responder, 
+    http::header, middleware::Logger};
 use actix_cors::Cors;
-use actix_web::{http::header, middleware::Logger};
 use serde::{Deserialize, Serialize};
-use std::io;
-
-// Import your grammar calculation logic
-mod grammar;
-mod calculator;
-mod mg;
-mod cypher;
-
+use std::{io, env};
 use dotenv::dotenv;
-use std::env;
+
+mod calculator;
+mod cypher;
+mod parse;
+
 use calculator::Calculate;
-use mg::GrammarGraph;
-use mg::MGParser;
+use crate::parse::mg::GrammarGraph;
+use crate::parse::mg::MGParser;
+use crate::parse::grammar::Grammar;
 
-
-// Define a struct for the input
 #[derive(Deserialize)]
 struct GrammarInput {
     grammar: String,
 }
 
-// Define a struct for the output
 #[derive(Serialize)]
 struct GrammarSizeResponse {
     size: f64,
@@ -37,7 +33,7 @@ async fn health_check() -> impl Responder {
 
 #[post("/calculate")]
 async fn calculate_size(input: web::Json<GrammarInput>) -> HttpResponse {
-    let grammar = match grammar::Grammar::new(&input.grammar, 26, 7, ';') {
+    let grammar = match Grammar::new(&input.grammar, 26, 7, ';') {
         Ok(g) => g, // If successful, bind the grammar to `g`
         Err(e) => panic!("Failed to create Grammar: {}", e), 
     };
