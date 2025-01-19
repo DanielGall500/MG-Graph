@@ -101,3 +101,6 @@ stylelintcache
 
 # output files
 */output.json
+
+# primevue
+ui/src/assets/*
