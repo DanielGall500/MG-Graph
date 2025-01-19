@@ -1,8 +1,40 @@
-[{
+{
   "queries": {
-        "clear_graph": {
-        "query": "MATCH (n) DETACH DELETE n",
-        "description": "Deletes all nodes and relationships from the graph."
+    "clear_graph": {
+          "name": "Clear Graph",
+          "query": "MATCH (n) DETACH DELETE n;",
+          "desc": "Deletes all nodes and relationships from the graph."
+        },
+    "create_node": {
+          "name": "Create Node",
+          "query": "CREATE (p:{TYPE} { {NODE_LABEL_KEY}: \"{NODE_LABEL_VAL}\" });",
+          "desc": "Creates a node in a graph with variables state, node label key, and node label val."
+        },
+    "delete_node": {
+          "name": "Delete Node",
+          "query": "MATCH (p:{TYPE} { {NODE_LABEL_KEY}: \"{NODE_LABEL_VAL}\" }) DETACH DELETE p",
+          "desc": "Deletes a specific node of type TYPE with a key-value pair NODE_LABEL_KEY : NODE_LABEL_VALUE."
+        },
+    "set_node_property": {
+          "name": "Set Node Property",
+          "query": "MATCH (n:{TYPE} { {NODE_LABEL_KEY}: \"{NODE_LABEL_VAL}\" }) SET n.{PROPERTY_KEY} = \"{PROPERTY_VAL}\"; ",
+          "desc": "Set a property on a specific node."
+        },
+    "set_relationship_property": {
+          "name": "Set Relationship Property",
+          "query": "MATCH ()-[r]->() WHERE r.{REL_ID} = \"{REL_VAL}\" SET r.{PROPERTY_KEY} = \"{PROPERTY_VAL}\"; ",
+          "desc": "Set a property on a relationship between two nodes."
+        },
+    "set_relationship": {
+          "name": "Set Relationship Between Two Nodes",
+          "query": "MATCH (a:{NODE_A_TYPE} { {NODE_A_LABEL_KEY}: \"{NODE_A_LABEL_VAL}\" }), (b:{NODE_B_TYPE} { {NODE_B_LABEL_KEY} : \"{NODE_B_LABEL_VAL}\" }) CREATE (a)-[:{REL_TYPE} { {PROPERTY_KEY}: \"{PROPERTY_VAL}\" }]->(b) RETURN a, b", 
+          "desc": "Create a relationship between a node A and a node B."
+        },
+    "delete_relationship": {
+          "name": "Delete Relationship",
+          "query": "MATCH (a:{NODE_A_TYPE} { {NODE_A_LABEL_KEY}: \"{NODE_A_LABEL_VAL}\" })-[edge:{REL_TYPE} { {PROPERTY_KEY}: \"{PROPERTY_VAL}\" }]->(b:{NODE_B_TYPE} { {NODE_B_LABEL_KEY} : \"{NODE_B_LABEL_VAL}\" }) DELETE edge",
+          "desc": "Delete a relationship between a node A and a node B."
         }
-    }
-}]
+
+    } 
+}

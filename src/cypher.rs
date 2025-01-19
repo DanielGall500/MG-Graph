@@ -27,12 +27,119 @@ impl CQueryStorage {
         }
     }
 
+    pub fn get_query(&self, q_id: &str) -> &CQuery {
+        self.queries.get(q_id).expect(&format!("No Query Available For ID {}", q_id))
+    }
+
     pub fn get_clear_graph(&self) -> &CQuery {
         const Q_ID: &str = "clear_graph";
-        for (id,q) in self.queries.iter() {
-            eprintln!("Printing Q's: {}", id);
+        self.get_query(Q_ID)
+    }
+
+    pub fn get_create_node(&self, state_type: &str, node_label_key: &str, node_label_val: &str) -> CQuery {
+        const Q_ID: &str = "create_node";
+        let q = self.get_query(Q_ID);
+
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{TYPE}", state_type)
+                .replace("{NODE_LABEL_KEY}", node_label_key)
+                .replace("{NODE_LABEL_VAL}", node_label_val),
+            desc: q.desc.clone()
         }
-        self.queries.get(Q_ID).expect(&format!("No Query Available For ID {}", Q_ID))
+    }
+
+    /* Yes, I know, code duplication. */
+    pub fn get_delete_node(&self, state_type: &str, node_label_key: &str, node_label_val: &str) -> CQuery {
+        const Q_ID: &str = "delete_node";
+        let q = self.get_query(Q_ID);
+
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{TYPE}", state_type)
+                .replace("{NODE_LABEL_KEY}", node_label_key)
+                .replace("{NODE_LABEL_VAL}", node_label_val),
+            desc: q.desc.clone()
+        }
+    }
+
+    pub fn get_set_node_property(&self, state_type: &str, node_label_key: &str, node_label_val: &str, property_key: &str, property_val: &str) -> CQuery {
+        const Q_ID: &str = "set_node_property";
+        let q = self.get_query(Q_ID);
+
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{TYPE}", state_type)
+                .replace("{NODE_LABEL_KEY}", node_label_key)
+                .replace("{NODE_LABEL_VAL}", node_label_val)
+                .replace("{PROPERTY_KEY}", property_key)
+                .replace("{PROPERTY_VAL}", property_val),
+            desc: q.desc.clone()
+        }
+    }
+
+    pub fn get_set_relationship_property(&self, rel_id: &str, rel_val: &str, prop_key: &str, prop_val: &str) -> CQuery {
+        const Q_ID: &str = "set_relationship_property";
+        let q = self.get_query(Q_ID);
+
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{REL_ID}", rel_id)
+                .replace("{REL_KEY}", rel_val)
+                .replace("{PROPERTY_KEY}", prop_key)
+                .replace("{PROPERTY_VAL}", prop_val),
+            desc: q.desc.clone()
+        }
+    }
+
+    pub fn get_set_relationship(&self, node_a_type: &str, node_a_label_key: &str, node_a_label_val: &str, 
+                                node_b_type: &str, node_b_label_key: &str, node_b_label_val: &str,
+                                type_rel: &str, prop_key: &str, prop_val: &str) -> CQuery {
+
+        const Q_ID: &str = "set_relationship";
+        let q = self.get_query(Q_ID);
+
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{NODE_A_TYPE}", node_a_type)
+                .replace("{NODE_A_LABEL_KEY}", node_a_label_key)
+                .replace("{NODE_A_LABEL_VAL}", node_a_label_val)
+                .replace("{NODE_B_TYPE}", node_b_type)
+                .replace("{NODE_B_LABEL_KEY}", node_b_label_key)
+                .replace("{NODE_B_LABEL_VAL}", node_b_label_val)
+                .replace("{REL_TYPE}", type_rel)
+                .replace("{PROPERTY_KEY}", prop_key)
+                .replace("{PROPERTY_VAL}", prop_val),
+            desc: q.desc.clone()
+        }
+    }
+
+    pub fn get_delete_relationship(&self, node_a_type: &str, node_a_label_key: &str, node_a_label_val: &str, 
+                                node_b_type: &str, node_b_label_key: &str, node_b_label_val: &str,
+                                type_rel: &str, prop_key: &str, prop_val: &str) -> CQuery {
+
+        const Q_ID: &str = "delete_relationship";
+        let q = self.get_query(Q_ID);
+
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{NODE_A_TYPE}", node_a_type)
+                .replace("{NODE_A_LABEL_KEY}", node_a_label_key)
+                .replace("{NODE_A_LABEL_VAL}", node_a_label_val)
+                .replace("{NODE_B_TYPE}", node_b_type)
+                .replace("{NODE_B_LABEL_KEY}", node_b_label_key)
+                .replace("{NODE_B_LABEL_VAL}", node_b_label_val)
+                .replace("{REL_TYPE}", type_rel)
+                .replace("{PROPERTY_KEY}", prop_key)
+                .replace("{PROPERTY_VAL}", prop_val),
+            desc: q.desc.clone()
+        }
     }
 
 }

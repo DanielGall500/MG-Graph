@@ -1,3 +1,4 @@
+use actix_web::web::delete;
 use neo4rs::{query, Graph};
 use std::error::Error;
 use std::io::{Write};
@@ -24,72 +25,71 @@ impl GeneralGraph {
     }
 
     pub async fn run(&self, q: &str) -> Result<(), neo4rs::Error> {
+        println!("About to run: {}", q);
         self.graph.run(query(q))
         .await
-        .map(|e| {
-            eprintln!("Graph Query Failed: {:#?}", e);
+        .map_err(|e| {
+            eprintln!("Graph Query Failed: {:?}", e);
             e
         })
     }
 
     pub async fn create_node(&self, category: &str, label_id: &str, label_val: &str) -> Result<(), Box<dyn Error>> {
-        let create_node_query = format!("CREATE (p:{} {{ {}: \"{}\" }})", category, label_id, label_val);
-        self.graph.run(query(create_node_query.as_str())).await?;
+        let create_node_query = self.queries.get_create_node(
+            category, label_id, label_val);
+        println!("Creating Node: {}", create_node_query.query);
+        self.run(&create_node_query.query).await?;
+        println!("Finished running.");
         Ok(())
     }
 
     #[allow(dead_code)]
     pub async fn delete_node(&self, category: &str, label_id: &str, label_val: &str) -> Result<(), Box<dyn Error>> {
-        let remove_node_query = format!("MATCH (p:{} {{ {}: \"{}\" }}) DETACH DELETE p", category, label_id, label_val);
-        self.graph.run(query(&remove_node_query)).await?;
+        let remove_node_query = self.queries.get_delete_node(category, label_id, label_val);
+        self.run(&remove_node_query.query).await?;
         Ok(())
     }
 
-    pub async fn set_node_property(&self, category: &str, node_id_key: &str, node_id_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
-        let set_node_property_query = format!(
-            "MATCH (n:{} {{ {}: \"{}\" }}) SET n.{} = \"{}\"; ",
-            category, node_id_key, node_id_val, property_key, property_val
-        );
-        println!("Running Node Property: {}", set_node_property_query);
-        self.graph.run(query(set_node_property_query.as_str())).await?;
+    pub async fn set_node_property(&self, category: &str, label_id: &str, label_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
+        let set_node_property = self.queries.get_set_node_property(
+            category, label_id, label_val, property_key, property_val);
+
+        println!("Running Query: {}", set_node_property.name);
+        self.run(&set_node_property.query).await?;
         Ok(())
     }
 
-    pub async fn set_relationship_property(&self, rel_id: &str, rel_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
-        let set_rel_property_query: String = format!(
-            "MATCH ()-[r]->() WHERE r.{} = \"{}\" SET r.{} = \"{}\"; ",
-            rel_id, rel_val, property_key, property_val
-        );
-        println!("Running Rel Property: {}", set_rel_property_query);
-        self.graph.run(query(set_rel_property_query.as_str())).await?;
+    pub async fn set_relationship(&self, cat_a: &str, node_a_key: &str, node_a_val: &str, 
+        cat_b: &str, node_b_key: &str, node_b_val: &str, 
+        cat_rel: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>> {
+        let set_relationship = self.queries.get_set_relationship(
+            cat_a, node_a_key, node_a_val, 
+            cat_b, node_b_key, node_b_val, 
+            cat_rel, prop_key, prop_val);
+        println!("Running Query: {}", set_relationship.query);
+        self.run(&set_relationship.query).await?;
         Ok(())
     }
 
-    // use MERGE instead
-    pub async fn set_relationship(&self, cat_a: &str, cat_b: &str, node_a: &str, node_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
-        println!("Creating {}-{}-{}", node_a, node_b, rel);
-        let set_relationship_query = format!(
-            "MATCH (a:{} {{ name: \"{}\" }}), (b:{} {{name: \"{}\" }})
-            CREATE (a)-[:MERGE {{ li: \'{}\' }}]->(b)
-            RETURN a, b", cat_a, node_a, cat_b, node_b, rel);
-        self.graph.run(query(set_relationship_query.as_str())).await?;
+    pub async fn set_relationship_property(&self, 
+        rel_id: &str, rel_key: &str, 
+        prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>> {
+        let set_relationship = self.queries.get_set_relationship_property(rel_id, rel_key, prop_key, prop_val);
+        self.run(&set_relationship.query).await?;
         Ok(())
     }
 
     #[allow(dead_code)]
-    pub async fn remove_relationship(&self, cat_a: &str, cat_b: &str, node_a: &str, node_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
-        println!("Removing {}-{}-{}", node_a, node_b, rel);
-        let delete_relationship_query = format!(
-            "MATCH (a:{} {{ name: \"{}\" }})-[edge:MERGE {{ li: \'{}\' }}]->(b:{} {{name: \"{}\" }})
-            DELETE edge", 
-            cat_a, node_a, rel, cat_b, node_b);
-        self.graph.run(query(delete_relationship_query.as_str())).await?;
+    pub async fn remove_relationship(&self, cat_a: &str, node_a_key: &str, node_a_val: &str, 
+        cat_b: &str, node_b_key: &str, node_b_val: &str, 
+        cat_rel: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>> {
+        let delete_rel = self.queries.get_delete_relationship(cat_a, node_a_key, node_a_val, cat_b, node_b_key, node_b_val, cat_rel, prop_key, prop_val);
+        self.run(&delete_rel.query).await?;
         Ok(())
     }
 
     /* Empties the Graph Database */
     pub async fn clear(&self) -> Result<(), neo4rs::Error> {
-        // let remove_all_query: &str = "MATCH (n) DETACH DELETE n";
         let clear_graph_query: &str = &self.queries.get_clear_graph().query;
         self.run(clear_graph_query).await
     }
@@ -133,20 +133,21 @@ impl GrammarGraph {
     }
 
     pub async fn create_state(&self, name: &str) -> Result<(), Box<dyn Error>> {
-        // let properties = format!("{{name: '{}'}}", name);
         self.base.create_node("State", "name", name).await?;
         Ok(())
     }
 
+    // "MATCH (a:{} {{ name: \"{}\" }})-[edge:MERGE {{ li: \'{}\' }}]->(b:{} {{name: \"{}\" }}) DELETE edge"
     pub async fn connect_states(&self, state_a: &str, state_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
-        self.base.set_relationship("State", "State", state_a, state_b, rel).await?;
+        self.base.set_relationship("State", "name", state_a, 
+        "State", "name", state_b, "MERGE", "li", rel).await?;
         Ok(())
     }
 
     #[allow(dead_code)]
     pub async fn delete_edge<'a>(&self, edge: &Edge<'a>) -> Result<(), Box<dyn Error>> {
-        self.base.remove_relationship("State", "State", 
-        &edge.state_a_id, &edge.state_b_id, &edge.rel).await?;
+        self.base.remove_relationship("State", "name", &edge.state_a_id, 
+        "State", "name", &edge.state_b_id, "MERGE", "li", &edge.rel).await?;
         Ok(())
     }
 
