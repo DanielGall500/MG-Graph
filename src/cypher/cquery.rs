@@ -14,7 +14,7 @@ pub struct CQueryStorage {
     pub queries: HashMap<String, CQuery>
 }
 
-const QUERIES_PATH: &str = "queries.json";
+const QUERIES_PATH: &str = "./cypher/queries.json";
 
 impl CQueryStorage {
     pub fn new() -> Self {
