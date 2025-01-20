@@ -104,3 +104,4 @@ stylelintcache
 
 # primevue
 ui/src/assets/*
+ui/public/
