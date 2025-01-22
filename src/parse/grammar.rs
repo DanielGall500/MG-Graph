@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-
 pub struct Grammar {
     mg: String,
     statements: Vec<String>,

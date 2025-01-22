@@ -1,4 +1,6 @@
-use crate::parse::mg::LexicalItem;
+use crate::parse::decomp;
+use crate::parse::mg::{LexicalItem, Feature, LIRelation};
+use core::panic;
 use std::collections::{HashMap, HashSet};
 use std::cmp::min;
 use std::iter::zip;
@@ -14,7 +16,6 @@ pub enum AffixType {
 pub struct Affix {
     morph: String,
     affix_type: AffixType,
-    lexical_item: usize
 }
 
 impl Decomposer {
@@ -22,7 +23,113 @@ impl Decomposer {
         Self { mg: Vec::new() }
     }
 
-    pub fn decompose() {
+    pub fn decompose(&self, mg: Vec<LexicalItem>, lis_to_decompose: Vec<usize>, affix: Affix, syntax_split_boundary: usize) -> Vec<LexicalItem> {
+        let mut decomposed_mg: Vec<LexicalItem> = Vec::new();
+        let mut decomposed_li: LexicalItem;
+        let mut li_morph_decomp: String;
+        // dummy affix, improve this
+        let mut affix_li = LexicalItem {
+            morph: String::from(""),
+            bundle: Vec::new(),
+        };
+        let affix_size: usize = &affix.morph.len()-1; // subtract 1 due to hyphen
+
+        // handle decomp
+        let mut decomposed_lis: Vec<LexicalItem> = Vec::new();
+        for (i, li_index) in lis_to_decompose.iter().enumerate() {
+            if let Some(li) = mg.get(li_index.clone()) {
+                println!("Operating on LI: {}", li.morph);
+                let mut bundle = li.bundle.clone();
+
+                match affix.affix_type {
+                    AffixType::PREFIX =>  li_morph_decomp = li.morph[affix_size-1..].to_string(),
+                    AffixType::SUFFIX =>  li_morph_decomp = li.morph[0..li.morph.len()-affix_size].to_string(),
+                }
+
+                // should move elements to a new bundle but need to check
+                let mut affix_bundle = bundle.split_off(syntax_split_boundary);
+
+                // HANDLE AFFIX CASE
+                if i == 0 {
+                    affix_bundle.insert(0, Feature {
+                        raw: format!("=>STATE:{}", affix.morph),
+                        id: format!("=>STATE-{}", affix.morph),
+                        rel: LIRelation::State
+                    });
+
+                    affix_li = LexicalItem {
+                        morph: affix.morph.clone(),
+                        bundle: affix_bundle
+                    };
+                }
+
+                // add the new state to the feature bundle of the split root
+                bundle.push(Feature {
+                    raw: format!("STATE:{}", affix.morph),
+                    id: format!("STATE-{}", affix.morph),
+                    rel: LIRelation::State
+                });
+
+                decomposed_li = LexicalItem {
+                    morph: li_morph_decomp,
+                    bundle: bundle
+                };
+                decomposed_lis.push(decomposed_li.clone());
+
+                for i in decomposed_lis.iter() {
+                    println!("{}", i.morph);
+                }
+                println!("---");
+            }
+        }
+
+        // copy the original mg into a new vector
+        decomposed_mg = mg.into_iter().clone().collect();
+
+        // begin by pushing the affix LI
+        decomposed_mg.push(affix_li);
+
+        // replace the original root LIs
+        for (li_index, decomp_li) in zip(lis_to_decompose, decomposed_lis) {
+            println!("Working on {}", decomp_li.morph);
+            if let Some(element) = decomposed_mg.get_mut(li_index) {
+                // dereferences to modify the value at the actual index
+                *element = decomp_li;
+                println!("Setting element");
+            }
+        }
+
+        decomposed_mg
+    }
+
+    pub fn get_decompose_suggestions(&self, mg: &Vec<LexicalItem>) -> HashMap<String, Vec<usize>> {
+        let candidate_set = self.find_decomposition_candidates(mg);
+        let mut candidate_set_threshold: HashMap<String, Vec<usize>> = HashMap::new();
+
+        for (affix, mut lis) in candidate_set.into_iter() {
+            let total_sim: f64 = lis.iter().map(|(x,y)| y).sum();
+            let count = lis.len();
+            let mean_sim = total_sim / count as f64;
+
+            let variance = lis.iter().map(|(x,y)| {
+                let diff = mean_sim - (*y as f64);
+
+                diff * diff
+            }).sum::<f64>() / count as f64;
+            let std_dev: f64 = variance.sqrt();
+
+            // mean+α⋅std
+            let alpha = 1.0;
+            let threshold = mean_sim + (alpha * std_dev);
+
+            let li_final_candidates: Vec<usize> = lis.into_iter()
+            .filter(|(x,y)| y >= &threshold)
+            .map(|(x,y)| x)
+            .collect();
+
+            candidate_set_threshold.insert(affix, li_final_candidates);
+        }
+        candidate_set_threshold
 
     }
 
@@ -195,4 +302,24 @@ pub fn test_decompose_affix_finder(mg: &Vec<LexicalItem>) {
         }
         println!("---");
     }
+
+    let decomp_suggestions = decomp.get_decompose_suggestions(mg);
+    let decompose_choice = decomp_suggestions.get("-s").unwrap();
+    println!("Suggestions for decomp:");
+    for i in decompose_choice {
+        println!("* {}", mg.get(i.clone()).unwrap().morph);
+    }
+    println!("----");
+    let affix = Affix {
+        morph: String::from("-s"),
+        affix_type: AffixType::SUFFIX
+    };
+    let k = 1;
+    let decomposed_mg = decomp.decompose(mg.clone(), decompose_choice.clone(), affix, k);
+    
+    use crate::parse::mg::MGParser;
+    let mut parser = MGParser::new();
+    parser.update_grammar(decomposed_mg);
+    parser.to_json("decomposed_suffix").unwrap();
+
 }
