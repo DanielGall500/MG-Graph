@@ -6,7 +6,6 @@ use std::fs::File;
 use std::collections::HashSet;
 use crate::cypher::cquery::CQueryStorage;
 
-
 pub struct GeneralGraph {
     graph: Graph,
     queries: CQueryStorage
@@ -233,6 +232,10 @@ impl MGParser {
         }
     }
 
+    pub fn get_grammar(&self) -> &Vec<LexicalItem> {
+        &self.mg
+    }
+
     pub async fn create_grammar_graph(&mut self, gg: &GrammarGraph) -> Result<(), Box<dyn Error>> {
         let mut merge_state: Option<&Feature>;
         let mut final_state: Option<&Feature>;
@@ -310,7 +313,7 @@ impl MGParser {
     }
 
     pub fn to_json(&self) -> Result<(), Box<dyn Error>> {
-        let mut file = File::create("./grammar/grammar_parsed.json")?;
+        let mut file = File::create("./parse/grammar_parsed.json")?;
         match serde_json::to_string_pretty(&self.mg) {
             Ok(json) => file.write_all(json.as_bytes())?,
             Err(e) => eprintln!("Error serializing data to JSON: {}", e),
@@ -319,7 +322,7 @@ impl MGParser {
     }
 
 
-    pub fn parse_grammar_representation(&mut self, minimalist_grammar: &str) -> Result<(), Box<dyn Error>> {
+    pub fn parse_grammar_representation(&mut self, minimalist_grammar: &str) -> Result<&Vec<LexicalItem>, Box<dyn Error>> {
         self.mg.clear();
         let mut li: LexicalItem;
 
@@ -390,6 +393,6 @@ impl MGParser {
             }
             self.mg.push(li);
         }
-        Ok(())
+        Ok(&self.mg)
     }
 }

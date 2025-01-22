@@ -1,8 +1,18 @@
-use std::iter::zip;
 use crate::parse::mg::LexicalItem;
+use std::collections::{HashMap, HashSet};
 
 pub struct Decomposer {
     mg: Vec<LexicalItem>
+}
+
+pub enum AffixType {
+    PREFIX,
+    SUFFIX
+}
+pub struct Affix {
+    morph: String,
+    affix_type: AffixType,
+    lexical_item: usize
 }
 
 impl Decomposer {
@@ -13,6 +23,42 @@ impl Decomposer {
     pub fn decompose() {
 
     }
+
+    pub fn get_affix_map(&self, mg: &Vec<LexicalItem>) -> HashMap<String, HashSet<usize>> {
+        // all morphemes in our MG
+        let morphs: Vec<String> = mg.iter().map(|x| x.morph.to_string()).collect();
+        let mut pairs: Vec<(String, String)> = Vec::new();
+
+        let mut affix_map: HashMap<String, HashSet<usize>> = HashMap::new();
+
+        let mut affixes: Vec<Affix> = Vec::new();
+
+        /* TODO: OPTMISATION PROCESS */
+        // all pairs in our MG
+        let mut j: usize; 
+        for (i, m1) in morphs.iter().enumerate() {
+            j = i+1;
+            for m2 in &morphs[j..] {
+                let (pre, suff) = self.get_common_affix(&m1, &m2);
+
+                // creates a dictionary which stores each affix
+                // and the lexical item index to which it is associated.
+                if !pre.is_empty() {
+                    affix_map.entry(pre)
+                    .or_insert_with(HashSet::new)
+                    .extend([i,j].iter());
+                }
+                if !suff.is_empty() {
+                    affix_map.entry(suff)
+                    .or_insert_with(HashSet::new)
+                    .extend([i,j].iter());
+                }
+                j += 1;
+            }
+        }
+        affix_map
+    }
+
 
     pub fn get_common_affix(&self, morph1: &str, morph2: &str) -> (String, String) {
         let common_prefix: String = morph1
@@ -38,12 +84,13 @@ impl Decomposer {
         (common_prefix, common_suffix)
     }
 
-
 }
 
-pub fn test_decompose_affix_finder() {
-    let item: Decomposer = Decomposer::new();
-    let (pre, suff) = item.get_common_affix("bedanken", "bekommen");
-    println!("Prefix: {}, Suffix: {}", pre, suff);
-    assert_eq!(pre, "be");
+pub fn test_decompose_affix_finder(mg: &Vec<LexicalItem>) {
+    let decomp: Decomposer = Decomposer::new();
+    let affix_map = decomp.get_affix_map(&mg);
+    println!("Affix Map:");
+    for (key, values) in &affix_map {
+        println!("{}: {:?}", key, values);
+    }
 }
