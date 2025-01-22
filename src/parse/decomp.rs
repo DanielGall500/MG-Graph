@@ -66,7 +66,16 @@ impl Decomposer {
             }
 
         }
-        candidate_map
+
+        // SORT THE ITEMS IN DESCENDING ORDER
+        // candidate_map.iter().map(|(s,v)| v.sort_by_key(|(index, sim)| sim)).collect();
+        let mut sorted_candidate_map: HashMap<String, Vec<(usize, f64)>> = HashMap::new();
+        for (affix, mut lis) in candidate_map.into_iter() {
+              lis.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap()); 
+              sorted_candidate_map.insert(affix, lis);
+        }
+
+        sorted_candidate_map
     }
 
     pub fn get_syntactic_similarity(&self,  l1: &LexicalItem, l2: &LexicalItem) -> f64 {
@@ -177,10 +186,13 @@ pub fn test_decompose_affix_finder(mg: &Vec<LexicalItem>) {
     let candidate_map = decomp.find_decomposition_candidates(&mg);
     println!("Candidate Map:");
     for (key, values) in &candidate_map {
+        println!("Affix: {}", key);
         for (index, sim) in values.iter() {
             if let Some(li) = mg.get(index.clone()) {
-                println!("Avg Sim of {} is {} for affix {}", li.morph, sim, key);
+                // println!("Avg Sim of {} is {} for affix {}", li.morph, sim, key);
+                println!("{},{}", li.morph, sim);
             }
         }
+        println!("---");
     }
 }
