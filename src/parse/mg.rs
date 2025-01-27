@@ -195,12 +195,12 @@ impl GrammarGraph {
 
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct LexicalItem {
     pub morph: String,
     pub bundle: Vec<Feature>,
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Feature {
     pub raw: String,
     pub id: String,
@@ -212,7 +212,7 @@ pub struct MGParser {
     pub states: HashSet<String>
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum LIRelation {
     LMerge, // =x
     RMerge, // x= 
@@ -234,6 +234,10 @@ impl MGParser {
 
     pub fn get_grammar(&self) -> &Vec<LexicalItem> {
         &self.mg
+    }
+
+    pub fn update_grammar(&mut self, updated_mg: Vec<LexicalItem>) {
+        self.mg = updated_mg;
     }
 
     pub async fn create_grammar_graph(&mut self, gg: &GrammarGraph) -> Result<(), Box<dyn Error>> {
@@ -312,8 +316,9 @@ impl MGParser {
         Ok(())
     }
 
-    pub fn to_json(&self) -> Result<(), Box<dyn Error>> {
-        let mut file = File::create("./parse/grammar_parsed.json")?;
+    pub fn to_json(&self, title: &str) -> Result<(), Box<dyn Error>> {
+        let path: String = format!("./parse/grammar_parsed_{}.json", title);
+        let mut file = File::create(path)?;
         match serde_json::to_string_pretty(&self.mg) {
             Ok(json) => file.write_all(json.as_bytes())?,
             Err(e) => eprintln!("Error serializing data to JSON: {}", e),

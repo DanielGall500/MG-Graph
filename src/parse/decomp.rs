@@ -4,9 +4,10 @@ use core::panic;
 use std::collections::{HashMap, HashSet};
 use std::cmp::min;
 use std::iter::zip;
+use std::error::Error;
 
 pub struct Decomposer {
-    mg: Vec<LexicalItem>
+    pub mg: Vec<LexicalItem>
 }
 
 pub enum AffixType {
@@ -14,8 +15,27 @@ pub enum AffixType {
     SUFFIX
 }
 pub struct Affix {
-    morph: String,
-    affix_type: AffixType,
+    pub morph: String,
+}
+
+impl Affix {
+    pub fn new(morph: &str) -> Self {
+        Self {
+            morph: morph.to_string(),
+        }
+    }
+
+    fn get_affix_type(&self) -> Result<AffixType, Box<dyn Error>> {
+        if self.morph.starts_with("-") {
+            Ok(AffixType::PREFIX)
+        }
+        else if self.morph.ends_with("-") {
+            Ok(AffixType::SUFFIX)
+        }
+        else {
+            Err("Invalid affix: must start or end with '-'".into())
+        }
+    }
 }
 
 impl Decomposer {
@@ -23,7 +43,7 @@ impl Decomposer {
         Self { mg: Vec::new() }
     }
 
-    pub fn decompose(&self, mg: Vec<LexicalItem>, lis_to_decompose: Vec<usize>, affix: Affix, syntax_split_boundary: usize) -> Vec<LexicalItem> {
+    pub fn decompose(&self, mg: Vec<LexicalItem>, lis_to_decompose: Vec<usize>, affix: Affix, syntax_split_boundary: usize) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
         let mut decomposed_mg: Vec<LexicalItem> = Vec::new();
         let mut decomposed_li: LexicalItem;
         let mut li_morph_decomp: String;
@@ -33,6 +53,15 @@ impl Decomposer {
             bundle: Vec::new(),
         };
         let affix_size: usize = &affix.morph.len()-1; // subtract 1 due to hyphen
+        
+        /* Ensure affix type is valid, otherwise return unchanged MG. */
+        let affix_type = match affix.get_affix_type() {
+            Ok(AffixType::PREFIX) => AffixType::PREFIX,
+            Ok(AffixType::SUFFIX) =>  AffixType::SUFFIX,
+            Err(e) => {
+                return Err(e.into())
+            }
+        };
 
         // handle decomp
         let mut decomposed_lis: Vec<LexicalItem> = Vec::new();
@@ -41,7 +70,7 @@ impl Decomposer {
                 println!("Operating on LI: {}", li.morph);
                 let mut bundle = li.bundle.clone();
 
-                match affix.affix_type {
+                match affix_type {
                     AffixType::PREFIX =>  li_morph_decomp = li.morph[affix_size-1..].to_string(),
                     AffixType::SUFFIX =>  li_morph_decomp = li.morph[0..li.morph.len()-affix_size].to_string(),
                 }
@@ -99,7 +128,7 @@ impl Decomposer {
             }
         }
 
-        decomposed_mg
+        Ok(decomposed_mg)
     }
 
     pub fn get_decompose_suggestions(&self, mg: &Vec<LexicalItem>) -> HashMap<String, Vec<usize>> {
@@ -312,14 +341,13 @@ pub fn test_decompose_affix_finder(mg: &Vec<LexicalItem>) {
     println!("----");
     let affix = Affix {
         morph: String::from("-s"),
-        affix_type: AffixType::SUFFIX
     };
     let k = 1;
     let decomposed_mg = decomp.decompose(mg.clone(), decompose_choice.clone(), affix, k);
     
     use crate::parse::mg::MGParser;
     let mut parser = MGParser::new();
-    parser.update_grammar(decomposed_mg);
+    parser.update_grammar(decomposed_mg.unwrap());
     parser.to_json("decomposed_suffix").unwrap();
 
 }
