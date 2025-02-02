@@ -1,10 +1,14 @@
-use crate::parse::decomp;
-use crate::parse::mg::{LexicalItem, Feature, LIRelation};
-use core::panic;
-use std::collections::{HashMap, HashSet};
-use std::cmp::min;
-use std::iter::zip;
-use std::error::Error;
+use crate::parse::mg::{
+    LexicalItem, 
+    Feature, 
+    LIRelation
+};
+use std::{
+    collections::{HashMap, HashSet},
+    cmp::min,
+    iter::zip,
+    error::Error,
+};
 
 pub struct Decomposer {
     pub mg: Vec<LexicalItem>

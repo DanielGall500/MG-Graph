@@ -5,11 +5,12 @@ use actix_web::{get, web, App, post,
 use actix_cors::Cors;
 use serde::{Deserialize, Serialize};
 use core::panic;
+use tokio::sync::Mutex;
 use std::{io, env};
-use std::sync::Mutex;
+use std::sync::Arc;
 use std::error::Error;
-use dotenv::dotenv;
 use std::collections::HashMap;
+use dotenv::dotenv;
 
 mod calculator;
 mod cypher;
@@ -40,19 +41,76 @@ async fn health_check() -> impl Responder {
 struct MGState {
     mg: Mutex<Vec<LexicalItem>>,
     mg_parser: Mutex<MGParser>,
-    graph: Mutex<GrammarGraph>,
+    graph_db: Arc<GrammarGraph>,
     decomposer: Mutex<Decomposer>
 }
 
 async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) -> Result<(), Box<dyn Error>> {
-    let mut mg_state = data.mg.lock().unwrap();
-    let mut mg_parser = data.mg_parser.lock().unwrap();
-    let mut graph = data.graph.lock().unwrap();
-
+    println!("Updating MG");
+    let mut mg_state = data.mg.lock().await;
     *mg_state = updated;
-    graph.clear().await?;
-    mg_parser.create_grammar_graph(&graph).await?;
     Ok(())
+}
+
+async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) {
+    println!("Parsing New MG");
+    let mut mg_parser = data.mg_parser.lock().await;
+    let grammar_rep = mg_parser.parse_grammar_representation(grammar);
+    match grammar_rep {
+        Ok(mg) => {
+            println!("Successful grammar parsing.");
+        }
+        Err(e) => println!("Invalid grammar parse: {}", e),
+    }
+
+    let to_json = mg_parser.to_json("recent");
+    match to_json {
+        Ok(()) => println!("Successful JSON conversion."),
+        Err(e) => println!("Invalid JSON conversion: {}", e),
+    }
+}
+
+async fn update_grammar_graph(data: &web::Data<MGState>) {
+    println!("Updating Grammar Graph");
+    let db = &data.graph_db;
+
+    match db.clear().await {
+        Ok(()) => println!("Graph cleared."),
+        Err(e) => println!("ERROR: Unable to clear graph. {}", e)
+    }
+
+    {
+        let mut mg_parser = data.mg_parser.lock().await;
+        let lis = mg_parser.get_grammar();
+
+        println!("LIs in grammar to be passed to graph:");
+        for li in lis.iter() {
+            println!("{}", li.morph);
+        }
+
+        match mg_parser.create_grammar_graph(db).await {
+            Ok(g) => println!("Graph updated successfully."),
+            Err(e) => println!("Problem updating graph: {}", e)
+        }
+    
+    }
+}
+
+#[post("/calculate")]
+async fn calculate_size(data: web::Data<MGState>, input: web::Json<GrammarInput>) -> HttpResponse {
+    let grammar = match Grammar::new(&input.grammar, 26, 7, ';') {
+        Ok(g) => g, // If successful, bind the grammar to `g`
+        Err(e) => panic!("Failed to create Grammar: {}", e), 
+    };
+
+    let calculator: calculator::GrammarSizeCalculator = calculator::GrammarSizeCalculator;
+    let size: f64 = calculator.get_grammar_size(&grammar, false);
+
+    parse_new_mg(&data, &input.grammar).await;
+    update_grammar_graph(&data).await;
+
+    let response = GrammarSizeResponse { size };
+    HttpResponse::Ok().json(response)
 }
 
 
@@ -65,8 +123,8 @@ struct DecomposeInput {
 #[post("/decompose")]
 async fn decompose(data: web::Data<MGState>, input: web::Json<DecomposeInput>) -> HttpResponse {
     /* We have a function which decomposes the MG, now we need to handle the input. */
-    let mg_state = data.mg.lock().unwrap();
-    let decomposer = data.decomposer.lock().unwrap();
+    let mg_state = data.mg.lock().await;
+    let decomposer = data.decomposer.lock().await;
     let affix: Affix = Affix {
         morph: input.affix.to_string(),
     };
@@ -90,15 +148,17 @@ async fn decompose(data: web::Data<MGState>, input: web::Json<DecomposeInput>) -
 
 #[derive(Serialize, Deserialize)]
 struct DecomposeSuggestionResponse {
-    prefix_morph_map: HashMap<String, Vec<String>>
+    prefix_morph_map: HashMap<String, Vec<String>>,
+    test: String,
 }
 #[get("/decompose-suggestions")]
 async fn get_decompose_suggestions(data: web::Data<MGState>) -> HttpResponse {
-    let mut mg_state = data.mg.lock().unwrap();
+    let mut mg_state = data.mg.lock().await;
 
-    let mut mg_parser = data.mg_parser.lock().unwrap();
-    let mut graph = data.graph.lock().unwrap();
-    let mut decomposer = data.decomposer.lock().unwrap();
+    let mut mg_parser = data.mg_parser.lock().await;
+    let graph = &data.graph_db;
+    // let mut graph = data.graph.lock().await;
+    let mut decomposer = data.decomposer.lock().await;
 
     let suggestions = decomposer.get_decompose_suggestions(&mg_state);
 
@@ -114,61 +174,11 @@ async fn get_decompose_suggestions(data: web::Data<MGState>) -> HttpResponse {
 
     let response = DecomposeSuggestionResponse {
         prefix_morph_map: suggestions_prefix_morph_map,
+        test: String::from("Working!")
     };
 
     HttpResponse::Ok().json(response)
 }
-
-#[post("/calculate")]
-async fn calculate_size(data: web::Data<MGState>, input: web::Json<GrammarInput>) -> HttpResponse {
-    let grammar = match Grammar::new(&input.grammar, 26, 7, ';') {
-        Ok(g) => g, // If successful, bind the grammar to `g`
-        Err(e) => panic!("Failed to create Grammar: {}", e), 
-    };
-
-    let calculator: calculator::GrammarSizeCalculator = calculator::GrammarSizeCalculator;
-    let size: f64 = calculator.get_grammar_size(&grammar, false);
-
-    let mut mg_parser = data.mg_parser.lock().unwrap();
-
-    // shove some code in here to see if it works
-    mg_parser.parse_grammar_representation(&input.grammar);
-    let mg_updated = mg_parser.get_grammar().clone();
-    mg_parser.to_json("recent");
-
-    update_mg(&data, mg_updated);
-
-    let response = GrammarSizeResponse { size };
-    HttpResponse::Ok().json(response)
-}
-
- /* 
-fn main() {
-    let mut mg_parser: MGParser = MGParser::new();
-    let mg: &str = "Mary :: d -k;
-                laughs :: =d +k t;
-                laughed :: =d +k t;
-                jumps :: =d +k t;
-                jumped :: =d +k t;"; 
-    let result: &Vec<LexicalItem>;
-
-    println!("MG");
-    println!("{}", mg);
-
-    match mg_parser.parse_grammar_representation(mg) {
-        Ok(grammar) => {
-            parse::decomp::test_decompose_affix_finder(grammar);
-        }
-        Err(e) => panic!("Error while testing.")
-    }
-
-    match mg_parser.to_json("original") {
-        Ok(()) => println!("Converted to JSON."),
-        Err(e) => eprintln!("Invalid JSON")
-    }
-    
-}
-*/
 
 const GRAPH_DATABASE_ADDR: &str = "neo4j://localhost:7687";
 const GRAPH_DATABASE_USER: &str = "neo4j";
@@ -195,7 +205,7 @@ async fn main() -> io::Result<()> {
         MGState {
         mg: Mutex::new(Vec::new()),
         mg_parser: Mutex::new(MGParser::new()),
-        graph: Mutex::new(grammar_graph),
+        graph_db: Arc::new(grammar_graph),
         decomposer: Mutex::new(Decomposer::new()),
     });
 
@@ -215,6 +225,8 @@ async fn main() -> io::Result<()> {
             .wrap(Logger::default())
             .service(calculate_size)
             .service(health_check)
+            .service(decompose)
+            .service(get_decompose_suggestions)
     })
     .bind(("127.0.0.1", 8000))? // the actual route that it is hosted on
     .workers(2)

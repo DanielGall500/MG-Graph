@@ -6,6 +6,7 @@ use std::fs::File;
 use std::collections::HashSet;
 use crate::cypher::cquery::CQueryStorage;
 
+#[derive(Clone)]
 pub struct GeneralGraph {
     graph: Graph,
     queries: CQueryStorage
@@ -105,6 +106,7 @@ pub struct Edge<'a> {
     pub rel: &'a str
 }
 
+#[derive(Clone)]
 pub struct GrammarGraph {
     base: GeneralGraph,
 }
@@ -240,7 +242,7 @@ impl MGParser {
         self.mg = updated_mg;
     }
 
-    pub async fn create_grammar_graph(&mut self, gg: &GrammarGraph) -> Result<(), Box<dyn Error>> {
+    pub async fn create_grammar_graph(&mut self, gg: &GrammarGraph) -> Result<GrammarGraph, Box<dyn Error>> {
         let mut merge_state: Option<&Feature>;
         let mut final_state: Option<&Feature>;
         let mut move_hoover: Option<&Feature>;
@@ -313,7 +315,7 @@ impl MGParser {
                 }
             }
         }
-        Ok(())
+        Ok(gg.clone())
     }
 
     pub fn to_json(&self, title: &str) -> Result<(), Box<dyn Error>> {
@@ -329,6 +331,7 @@ impl MGParser {
 
     pub fn parse_grammar_representation(&mut self, minimalist_grammar: &str) -> Result<&Vec<LexicalItem>, Box<dyn Error>> {
         self.mg.clear();
+        self.states.clear();
         let mut li: LexicalItem;
 
         let mg_statements = minimalist_grammar
@@ -337,7 +340,6 @@ impl MGParser {
             .filter(|l| { !l.is_empty() });
 
         for l in mg_statements {
-            println!("LINE: {}", l);
             li = LexicalItem { 
                 morph: String::from(""), 
                 bundle: Vec::new() 

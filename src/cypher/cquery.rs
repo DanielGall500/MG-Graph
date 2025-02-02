@@ -4,12 +4,15 @@ use std::fs::File;
 use std::error::Error;
 use std::io::Read;
 use std::collections::HashMap;
+
+#[derive(Clone)]
 pub struct CQuery {
     pub name: String,
     pub query: String,
     pub desc: String,
 }
 
+#[derive(Clone)]
 pub struct CQueryStorage {
     pub queries: HashMap<String, CQuery>
 }
