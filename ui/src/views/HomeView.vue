@@ -22,6 +22,9 @@ const mgSize = ref(0);
 const responseNotification = ref("");
 const activeTab = ref(0);
 const graph_vis = ref();
+const decomp_suggestions = ref();
+const loading_decomp_suggestions = ref(false);
+const decomp_status = ref("Nothing to report.");
 
 function clearGrammarTextBox() {
     mgTextValue.value = "";
@@ -31,8 +34,8 @@ function setMGSize(size: number) {
     mgSize.value = size;
 }
 
-function switchTab() {
-    activeTab.value = 1;
+function switchTab(tab: number) {
+    activeTab.value = tab;
 }
 
 function reload() {
@@ -53,7 +56,7 @@ const submitGrammar = async (): Promise<string> => {
 
         // update the frontend
         clearGrammarTextBox()
-        switchTab();
+        switchTab(2);
         reload();
 
         // set the updated values for grammar
@@ -63,8 +66,35 @@ const submitGrammar = async (): Promise<string> => {
     } catch (error: any) {
         console.error('Error:', error);
         clearGrammarTextBox()
-        responseNotification.value = error; 
+        responseNotification.value = error;
         return "Failed."
+    }
+}
+
+/* TODO
+Try to connect this up to get suggestions and display them to the user.
+Then allow for decomposition to take place.
+*/
+const get_suggestions = async(): Promise<string> => {
+    loading_decomp_suggestions.value = true;
+    decomp_status.value = "Status Updating...";
+    try {
+        const response = await fetch('http://127.0.0.1:8000/decompose-suggestions', { 
+            method: 'GET',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+        });
+        const data = await response.json();
+        decomp_status.value = data.test;
+        decomp_suggestions.value = data.prefix_morph_map;
+        loading_decomp_suggestions.value = false;
+        return "Suggestions Found!"
+
+    } catch (error: any) {
+        loading_decomp_suggestions.value = false;
+        decomp_status.value = error; 
+        return "No Suggestions Found."
     }
 }
 </script>
@@ -174,6 +204,34 @@ const submitGrammar = async (): Promise<string> => {
                     <div class="flex gap-3 mt-1" style="width: 30em;">
                         <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
                         <Button label="Submit" class="w-full" @click="submitGrammar"/>
+                        <p>{{ responseNotification }}</p>
+                    </div>
+                    </template>
+                </Card>
+            </div>
+        </TabPanel>
+
+        <TabPanel header="Decomposition" :activeIndex="activeTab">
+            <div class="flex justify-content-right">
+                <Card style="width: 80rem; overflow: hidden">
+                    <template #title>Perform Lexical Decomposition</template>
+                    <template #content>
+                    <Divider />
+                    <h1>Your items are here...</h1>
+                    <div v-if="loading_decomp_suggestions"><p>Loading...</p></div>
+                    <p>Suggestions:</p>
+                    <div v-for="(li_vec, affix) in decomp_suggestions" :key="affix" >
+                        <h3>{{ affix }}</h3>
+                        <ul>
+                            <li v-for="li in li_vec" :key="li">{{ li }}</li>
+                        </ul>
+                    </div>
+                    <p>{{ decomp_status }}</p>
+                    </template>
+                    <template #footer>
+                    <div class="flex gap-3 mt-1" style="width: 30em;">
+                        <Button label="Cancel" severity="secondary" outlined class="w-full" @click=""/>
+                        <Button label="Submit" class="w-full" @click="get_suggestions"/>
                     </div>
                     </template>
                 </Card>
@@ -182,7 +240,7 @@ const submitGrammar = async (): Promise<string> => {
 
         <!-- Visualisation Tab -->
         <TabPanel header="Visualisation" :activeIndex="activeTab">
-            <h1>Neo4j Graph Visualization</h1>
+            <h1>MG-Graph Visualisation</h1>
             <h2>Size: {{  mgSize  }}</h2>
             <GraphVis ref="graph_vis"/>
         </TabPanel>

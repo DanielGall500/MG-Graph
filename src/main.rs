@@ -3,6 +3,7 @@ use actix_web::{get, web, App, post,
     HttpResponse, HttpServer, Responder, 
     http::header, middleware::Logger};
 use actix_cors::Cors;
+use parse::grammar;
 use serde::{Deserialize, Serialize};
 use core::panic;
 use tokio::sync::Mutex;
@@ -45,14 +46,13 @@ struct MGState {
     decomposer: Mutex<Decomposer>
 }
 
-async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) -> Result<(), Box<dyn Error>> {
+async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) {
     println!("Updating MG");
     let mut mg_state = data.mg.lock().await;
     *mg_state = updated;
-    Ok(())
 }
 
-async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) {
+async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
     println!("Parsing New MG");
     let mut mg_parser = data.mg_parser.lock().await;
     let grammar_rep = mg_parser.parse_grammar_representation(grammar);
@@ -68,6 +68,7 @@ async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) {
         Ok(()) => println!("Successful JSON conversion."),
         Err(e) => println!("Invalid JSON conversion: {}", e),
     }
+    Ok(mg_parser.get_grammar().clone())
 }
 
 async fn update_grammar_graph(data: &web::Data<MGState>) {
@@ -106,8 +107,9 @@ async fn calculate_size(data: web::Data<MGState>, input: web::Json<GrammarInput>
     let calculator: calculator::GrammarSizeCalculator = calculator::GrammarSizeCalculator;
     let size: f64 = calculator.get_grammar_size(&grammar, false);
 
-    parse_new_mg(&data, &input.grammar).await;
+    let new_mg = parse_new_mg(&data, &input.grammar).await;
     update_grammar_graph(&data).await;
+    update_mg(&data, new_mg.unwrap()).await;
 
     let response = GrammarSizeResponse { size };
     HttpResponse::Ok().json(response)
@@ -139,10 +141,7 @@ async fn decompose(data: web::Data<MGState>, input: web::Json<DecomposeInput>) -
             decomposed_mg = mg_state.clone();
         } 
     }
-    match update_mg(&data, decomposed_mg).await {
-        Ok(()) => println!("MG Updated"),
-        Err(e) => eprintln!("{}", e)
-    }
+    update_mg(&data, decomposed_mg).await; 
     HttpResponse::Ok().into()
 }
 
@@ -200,6 +199,12 @@ async fn main() -> io::Result<()> {
         Ok(g) => g,
         Err(e) => panic!("NEO4J ERROR: {}", e),
     };
+
+    // empty the database on each reload
+    match grammar_graph.clear().await {
+        Ok(()) => println!("Graph cleared."),
+        Err(e) => println!("ERROR: Unable to clear graph. {}", e)
+    }
 
     let mg_state = web::Data::new(
         MGState {
