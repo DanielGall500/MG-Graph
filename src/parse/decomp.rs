@@ -11,13 +11,17 @@ use std::{
 };
 
 pub struct Decomposer {
-    pub mg: Vec<LexicalItem>
+    pub mg: Vec<LexicalItem>,
+    pub candidate_map: HashMap<String, Vec<usize>>
 }
 
+#[derive(Debug)]
 pub enum AffixType {
     PREFIX,
     SUFFIX
 }
+
+#[derive(Debug)]
 pub struct Affix {
     pub morph: String,
 }
@@ -30,10 +34,10 @@ impl Affix {
     }
 
     fn get_affix_type(&self) -> Result<AffixType, Box<dyn Error>> {
-        if self.morph.starts_with("-") {
+        if self.morph.ends_with("-") {
             Ok(AffixType::PREFIX)
         }
-        else if self.morph.ends_with("-") {
+        else if self.morph.starts_with("-") {
             Ok(AffixType::SUFFIX)
         }
         else {
@@ -44,7 +48,7 @@ impl Affix {
 
 impl Decomposer {
     pub fn new() -> Self {
-        Self { mg: Vec::new() }
+        Self { mg: Vec::new(), candidate_map: HashMap::new() }
     }
 
     pub fn decompose(&self, mg: Vec<LexicalItem>, lis_to_decompose: Vec<usize>, affix: Affix, syntax_split_boundary: usize) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
@@ -67,11 +71,17 @@ impl Decomposer {
             }
         };
 
+        for li_index in lis_to_decompose.iter() {
+            println!("LI Index: {}", li_index);
+            println!("Actual: {}", mg.get(li_index.clone()).unwrap().morph);
+        }
+
         // handle decomp
         let mut decomposed_lis: Vec<LexicalItem> = Vec::new();
         for (i, li_index) in lis_to_decompose.iter().enumerate() {
             if let Some(li) = mg.get(li_index.clone()) {
                 println!("Operating on LI: {}", li.morph);
+                println!("Affix Type: {:?}", affix.get_affix_type().unwrap());
                 let mut bundle = li.bundle.clone();
 
                 match affix_type {
@@ -132,14 +142,18 @@ impl Decomposer {
             }
         }
 
+        for li in decomposed_mg.iter() {
+            println!("Post-Decomp Item: {}", li.morph);
+        }
+
         Ok(decomposed_mg)
     }
 
-    pub fn get_decompose_suggestions(&self, mg: &Vec<LexicalItem>) -> HashMap<String, Vec<usize>> {
+    pub fn get_decompose_suggestions(&mut self, mg: &Vec<LexicalItem>) -> HashMap<String, Vec<usize>> {
         let candidate_set = self.find_decomposition_candidates(mg);
         let mut candidate_set_threshold: HashMap<String, Vec<usize>> = HashMap::new();
 
-        for (affix, mut lis) in candidate_set.into_iter() {
+        for (affix, lis) in candidate_set.into_iter() {
             let total_sim: f64 = lis.iter().map(|(x,y)| y).sum();
             let count = lis.len();
             let mean_sim = total_sim / count as f64;
@@ -160,7 +174,9 @@ impl Decomposer {
             .map(|(x,y)| x)
             .collect();
 
-            candidate_set_threshold.insert(affix, li_final_candidates);
+            candidate_set_threshold.insert(affix.clone(), li_final_candidates.clone());
+            // short term fix
+            self.candidate_map.insert(affix.clone(), li_final_candidates.clone());
         }
         candidate_set_threshold
 
@@ -307,6 +323,7 @@ impl Decomposer {
 
 }
 
+/* 
 pub fn test_decompose_affix_finder(mg: &Vec<LexicalItem>) {
     let decomp: Decomposer = Decomposer::new();
     let affix_map = decomp.get_affix_map(&mg);
@@ -355,3 +372,4 @@ pub fn test_decompose_affix_finder(mg: &Vec<LexicalItem>) {
     parser.to_json("decomposed_suffix").unwrap();
 
 }
+    */

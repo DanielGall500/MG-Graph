@@ -230,6 +230,9 @@ impl MGParser {
     pub fn new() -> Self {
         Self{
             mg: Vec::new(),
+
+            // states are updated automatically when new MGs are added
+            // to the graph. Note they do not update upon running update_grammar
             states: HashSet::new(),
         }
     }
@@ -248,6 +251,8 @@ impl MGParser {
         let mut move_hoover: Option<&Feature>;
         let mut bundle: &Vec<Feature>;
         let mut is_head: bool;
+
+        self.states.clear();
 
         for li in &self.mg {
             // check if this new lexical item is a head or not

@@ -3,7 +3,6 @@ use actix_web::{get, web, App, post,
     HttpResponse, HttpServer, Responder, 
     http::header, middleware::Logger};
 use actix_cors::Cors;
-use parse::grammar;
 use serde::{Deserialize, Serialize};
 use core::panic;
 use tokio::sync::Mutex;
@@ -47,9 +46,22 @@ struct MGState {
 }
 
 async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) {
+
     println!("Updating MG");
-    let mut mg_state = data.mg.lock().await;
-    *mg_state = updated;
+    {
+        println!("Updating 1");
+        let mut mg_state = data.mg.lock().await;
+        println!("Updating 2");
+        *mg_state = updated.clone();
+        println!("Updating 3");
+    }
+
+    println!("Second run.");
+    {
+        let mut mg_parser = data.mg_parser.lock().await;
+        mg_parser.update_grammar(updated);
+    }
+
 }
 
 async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
@@ -71,6 +83,10 @@ async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec
     Ok(mg_parser.get_grammar().clone())
 }
 
+/* TODO
+- MG needs to be updated properly.
+ */
+
 async fn update_grammar_graph(data: &web::Data<MGState>) {
     println!("Updating Grammar Graph");
     let db = &data.graph_db;
@@ -88,6 +104,7 @@ async fn update_grammar_graph(data: &web::Data<MGState>) {
         for li in lis.iter() {
             println!("{}", li.morph);
         }
+
 
         match mg_parser.create_grammar_graph(db).await {
             Ok(g) => println!("Graph updated successfully."),
@@ -116,32 +133,51 @@ async fn calculate_size(data: web::Data<MGState>, input: web::Json<GrammarInput>
 }
 
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct DecomposeInput {
     affix: String,
     split: usize,
-    lis_to_decompose: Vec<usize>
 }
 #[post("/decompose")]
 async fn decompose(data: web::Data<MGState>, input: web::Json<DecomposeInput>) -> HttpResponse {
-    /* We have a function which decomposes the MG, now we need to handle the input. */
-    let mg_state = data.mg.lock().await;
-    let decomposer = data.decomposer.lock().await;
-    let affix: Affix = Affix {
-        morph: input.affix.to_string(),
-    };
-    let split: usize = input.split;
-    let to_decomp = &input.lis_to_decompose;
-
     let decomposed_mg: Vec<LexicalItem>;
-    match decomposer.decompose(mg_state.to_vec(), to_decomp.clone(), affix, split) {
-        Ok(decomp) => decomposed_mg = decomp,
-        Err(e) => {
-            eprintln!("DECOMP ERROR - Could Not Perform Decomposition: {}", e);
-            decomposed_mg = mg_state.clone();
-        } 
+    // initial state access
+    {
+        /* We have a function which decomposes the MG, now we need to handle the input. */
+        let mg_state = data.mg.lock().await;
+        let decomposer = data.decomposer.lock().await;
+
+        let candidate_map = decomposer.candidate_map.clone();
+        let to_decomp = candidate_map.get(&input.affix.to_string()).unwrap();
+        // let to_decomp = &input.lis_to_decompose;
+
+        let affix: Affix = Affix {
+            morph: input.affix.to_string(),
+        };
+        println!("Affix: {:?}", affix.morph);
+        let split: usize = input.split;
+
+        match decomposer.decompose(mg_state.to_vec(), to_decomp.clone(), affix, split) {
+            Ok(decomp) => {
+                decomposed_mg = decomp;
+                println!("No Error. Decomp run.");
+            },
+            Err(e) => {
+                eprintln!("DECOMP ERROR - Could Not Perform Decomposition: {}", e);
+                decomposed_mg = mg_state.clone();
+            } 
+        }
+
     }
-    update_mg(&data, decomposed_mg).await; 
+
+    {
+    update_mg(&data, decomposed_mg).await;
+    }
+
+    // second state access
+    {
+    update_grammar_graph(&data).await;
+    }
     HttpResponse::Ok().into()
 }
 
