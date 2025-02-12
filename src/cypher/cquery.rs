@@ -92,7 +92,7 @@ impl CQueryStorage {
             name: q.name.clone(),
             query: q.query
                 .replace("{REL_ID}", rel_id)
-                .replace("{REL_KEY}", rel_val)
+                .replace("{REL_VAL}", rel_val)
                 .replace("{PROPERTY_KEY}", prop_key)
                 .replace("{PROPERTY_VAL}", prop_val),
             desc: q.desc.clone()

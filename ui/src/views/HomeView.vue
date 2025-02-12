@@ -45,7 +45,7 @@ function reload() {
 const submitGrammar = async (): Promise<string> => {
     try {
         // communicate with backend MG API
-        const response = await fetch('http://127.0.0.1:8000/calculate', { // Adjust the URL as necessary
+        const response = await fetch('http://127.0.0.1:8000/build-initial-mg', { // Adjust the URL as necessary
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
@@ -95,6 +95,47 @@ const get_suggestions = async(): Promise<string> => {
         loading_decomp_suggestions.value = false;
         decomp_status.value = error; 
         return "No Suggestions Found."
+    }
+}
+
+const decompose = async (event: any, affix: any, li_vec: any): Promise<string> => {
+    decomp_status.value = "Selected " + li_vec;
+    try {
+        // communicate with backend MG API
+        const build_mg_response = await fetch('http://127.0.0.1:8000/decompose', { // Adjust the URL as necessary
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                affix: affix,
+                split: 1,
+             }), 
+        });
+        const build_mg_data = await build_mg_response.json();
+
+        const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { // Adjust the URL as necessary
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ grammar: mgTextValue.value }), // Send the grammar to the backend
+        });
+        const size_data = await size_response.json();
+        setMGSize(size_data.size);
+
+        // update the frontend
+        switchTab(3);
+        reload();
+
+        // set the updated values for grammar
+        // setMGSize(data.size);
+        responseNotification.value = "Decomposed!"
+        return "Success!"
+    } catch (error: any) {
+        console.error('Error:', error);
+        responseNotification.value = error;
+        return "Failed."
     }
 }
 </script>
@@ -221,7 +262,7 @@ const get_suggestions = async(): Promise<string> => {
                     <div v-if="loading_decomp_suggestions"><p>Loading...</p></div>
                     <p>Suggestions:</p>
                     <div v-for="(li_vec, affix) in decomp_suggestions" :key="affix" >
-                        <h3>{{ affix }}</h3>
+                        <Button class="btn btn-light" @click="decompose($event, affix, li_vec)">{{ affix }}</Button>
                         <ul>
                             <li v-for="li in li_vec" :key="li">{{ li }}</li>
                         </ul>
@@ -241,7 +282,7 @@ const get_suggestions = async(): Promise<string> => {
         <!-- Visualisation Tab -->
         <TabPanel header="Visualisation" :activeIndex="activeTab">
             <h1>MG-Graph Visualisation</h1>
-            <h2>Size: {{  mgSize  }}</h2>
+            <h2>Size: {{  Math.round(mgSize)  }}</h2>
             <GraphVis ref="graph_vis"/>
         </TabPanel>
     </TabView>

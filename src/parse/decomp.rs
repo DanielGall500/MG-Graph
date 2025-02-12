@@ -95,9 +95,9 @@ impl Decomposer {
                 // HANDLE AFFIX CASE
                 if i == 0 {
                     affix_bundle.insert(0, Feature {
-                        raw: format!("=>STATE:{}", affix.morph),
-                        id: format!("=>STATE-{}", affix.morph),
-                        rel: LIRelation::State
+                        raw: format!("=>:{}", affix.morph),
+                        id: format!(":{}", affix.morph),
+                        rel: LIRelation::LMerge
                     });
 
                     affix_li = LexicalItem {
@@ -106,10 +106,13 @@ impl Decomposer {
                     };
                 }
 
+                /*
+                TODO: The decomposition needs to connect the new state with the state it has taken from the root. */
+
                 // add the new state to the feature bundle of the split root
                 bundle.push(Feature {
-                    raw: format!("STATE:{}", affix.morph),
-                    id: format!("STATE-{}", affix.morph),
+                    raw: format!(":{}", affix.morph),
+                    id: format!(":{}", affix.morph),
                     rel: LIRelation::State
                 });
 

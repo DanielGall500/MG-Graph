@@ -60,6 +60,11 @@ async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) {
     {
         let mut mg_parser = data.mg_parser.lock().await;
         mg_parser.update_grammar(updated);
+
+        match mg_parser.to_json("decomposed.json") {
+            Ok(()) => println!("Updated JSON with decomposition step."),
+            Err(e) => eprintln!("{}",e),
+        }
     }
 
 }
@@ -114,22 +119,43 @@ async fn update_grammar_graph(data: &web::Data<MGState>) {
     }
 }
 
-#[post("/calculate")]
-async fn calculate_size(data: web::Data<MGState>, input: web::Json<GrammarInput>) -> HttpResponse {
-    let grammar = match Grammar::new(&input.grammar, 26, 7, ';') {
+fn calculate_size_from_string(grammar: &str) -> f64 {
+    let grammar = match Grammar::new(grammar, 26, 7, ';') {
         Ok(g) => g, // If successful, bind the grammar to `g`
         Err(e) => panic!("Failed to create Grammar: {}", e), 
     };
 
     let calculator: calculator::GrammarSizeCalculator = calculator::GrammarSizeCalculator;
     let size: f64 = calculator.get_grammar_size(&grammar, false);
+    size
+}
 
+/* NEXT STEP */
+fn calculate_size_from_json() -> f64 {
+    /*
+    TODO:
+    - load in most recent JSON update.
+    - it actually might be handy to have it in text form. so build some sort
+        of conversion from JSON to text.
+    - calculate size for the text format. */
+
+}
+
+#[post("/calculate-size")]
+async fn request_calculate_size() -> HttpResponse {
+    let size: f64 = calculate_size_from_json();
+    let response = GrammarSizeResponse { size };
+    HttpResponse::Ok().json(response)
+}
+
+#[post("/build-initial-mg")]
+async fn build_initial_mg(data: web::Data<MGState>, input: web::Json<GrammarInput>) -> HttpResponse {
     let new_mg = parse_new_mg(&data, &input.grammar).await;
     update_grammar_graph(&data).await;
     update_mg(&data, new_mg.unwrap()).await;
 
-    let response = GrammarSizeResponse { size };
-    HttpResponse::Ok().json(response)
+    let size: f64 = calculate_size_from_string(&input.grammar);
+    HttpResponse::Ok().json(size)
 }
 
 
@@ -171,12 +197,12 @@ async fn decompose(data: web::Data<MGState>, input: web::Json<DecomposeInput>) -
     }
 
     {
-    update_mg(&data, decomposed_mg).await;
+        update_mg(&data, decomposed_mg).await;
     }
 
     // second state access
     {
-    update_grammar_graph(&data).await;
+        update_grammar_graph(&data).await;
     }
     HttpResponse::Ok().into()
 }
@@ -264,10 +290,11 @@ async fn main() -> io::Result<()> {
                     .max_age(3600),
             )
             .wrap(Logger::default())
-            .service(calculate_size)
+            .service(request_calculate_size)
             .service(health_check)
             .service(decompose)
             .service(get_decompose_suggestions)
+            .service(build_initial_mg)
     })
     .bind(("127.0.0.1", 8000))? // the actual route that it is hosted on
     .workers(2)
