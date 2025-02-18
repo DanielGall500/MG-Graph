@@ -26,6 +26,10 @@ const decomp_suggestions = ref();
 const loading_decomp_suggestions = ref(false);
 const decomp_status = ref("Nothing to report.");
 
+function setGrammarTextBox(grammar: string) {
+    mgTextValue.value = grammar;
+}
+
 function clearGrammarTextBox() {
     mgTextValue.value = "";
 }
@@ -112,29 +116,30 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
                 split: 1,
              }), 
         });
-        const build_mg_data = await build_mg_response.json();
+        // const build_mg_data = await build_mg_response.json();
 
         const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { // Adjust the URL as necessary
-            method: 'POST',
+            method: 'GET',
             headers: {
             'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ grammar: mgTextValue.value }), // Send the grammar to the backend
         });
         const size_data = await size_response.json();
         setMGSize(size_data.size);
+        setGrammarTextBox(size_data.grammar);
 
         // update the frontend
-        switchTab(3);
+        decomp_suggestions.value = [];
+        switchTab(2);
         reload();
 
         // set the updated values for grammar
         // setMGSize(data.size);
-        responseNotification.value = "Decomposed!"
+        decomp_status.value = "Decomposed!"
         return "Success!"
     } catch (error: any) {
         console.error('Error:', error);
-        responseNotification.value = error;
+        decomp_status.value = error;
         return "Failed."
     }
 }
@@ -271,8 +276,8 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
                     </template>
                     <template #footer>
                     <div class="flex gap-3 mt-1" style="width: 30em;">
-                        <Button label="Cancel" severity="secondary" outlined class="w-full" @click=""/>
-                        <Button label="Submit" class="w-full" @click="get_suggestions"/>
+                        <Button label="Cancel" severity="secondary" outlined class="w-full" />
+                        <Button label="Calculate Decomposition Suggestions" class="w-full" @click="get_suggestions"/>
                     </div>
                     </template>
                 </Card>

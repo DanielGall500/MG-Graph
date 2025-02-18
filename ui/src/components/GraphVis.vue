@@ -12,7 +12,8 @@ import NeoVis from 'neovis.js/dist/neovis.js';
 
 // dotenv.config()
 
-const passwordEnvVariable = "almonds1" // process.env.PASSWORD;
+// FIX THIS!!
+const passwordEnvVariable = "almonds1"
 
 const containerId = "graph-vis-box"
 const serverUsername = "neo4j"
