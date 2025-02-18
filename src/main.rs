@@ -157,11 +157,16 @@ async fn build_initial_mg(data: web::Data<MGState>, input: web::Json<GrammarInpu
 }
 
 
+/*
+NOTE:
+- Doesn't yet work for multiple features. Connections don't connect properly.
+ */
 #[derive(Serialize, Deserialize)]
 struct DecomposeInput {
     affix: String,
     split: usize,
 }
+
 #[post("/decompose")]
 async fn decompose(data: web::Data<MGState>, input: web::Json<DecomposeInput>) -> HttpResponse {
     let decomposed_mg: Vec<LexicalItem>;

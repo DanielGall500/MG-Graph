@@ -1,20 +1,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import GraphVis from '@/components/GraphVis.vue'
-import { RefSymbol } from "@vue/reactivity";
+import { useToast } from 'primevue/usetoast';
 
 const selectedCity = ref();
 const sizeAlgorithms = ref([
   { name: "Ermolaeva", code: "ERM" },
   { name: "Simple", code: "SP" },
-]);
-const tabs = ref([
-    { title: 'Editor', value: '0' },
-    { title: 'Visualisation', value: '1' },
-]);
-const items = ref([
-    { name: 'Editor', image: 'amyelsner.png' },
-    { name: 'Visualisation', image: 'annafali.png' },
 ]);
 const visible = ref(false);
 const mgTextValue = ref("");
@@ -24,7 +16,17 @@ const activeTab = ref(0);
 const graph_vis = ref();
 const decomp_suggestions = ref();
 const loading_decomp_suggestions = ref(false);
-const decomp_status = ref("Nothing to report.");
+const toast = useToast();
+
+function showMessage(summary: string, detail: string, is_error: boolean) {
+    const sev = is_error ? "error" : "success";
+    toast.add({
+        severity: sev,  
+        summary: summary,
+        detail: detail,
+        life: 3000 // Display time in milliseconds
+    });
+};
 
 function setGrammarTextBox(grammar: string) {
     mgTextValue.value = grammar;
@@ -65,13 +67,13 @@ const submitGrammar = async (): Promise<string> => {
 
         // set the updated values for grammar
         setMGSize(data.size);
-        responseNotification.value = "Success!"
-        return "Success!"
+        showMessage("Success!", "Grammar successfully submitted.", false);
+        return "Success!";
     } catch (error: any) {
         console.error('Error:', error);
-        clearGrammarTextBox()
-        responseNotification.value = error;
-        return "Failed."
+        clearGrammarTextBox();
+        showMessage("Error!", error, true);
+        return "Failed.";
     }
 }
 
@@ -81,7 +83,6 @@ Then allow for decomposition to take place.
 */
 const get_suggestions = async(): Promise<string> => {
     loading_decomp_suggestions.value = true;
-    decomp_status.value = "Status Updating...";
     try {
         const response = await fetch('http://127.0.0.1:8000/decompose-suggestions', { 
             method: 'GET',
@@ -90,20 +91,19 @@ const get_suggestions = async(): Promise<string> => {
             },
         });
         const data = await response.json();
-        decomp_status.value = data.test;
+        showMessage("Success!", "Suggestions Successfully Loaded.", false);
         decomp_suggestions.value = data.prefix_morph_map;
         loading_decomp_suggestions.value = false;
         return "Suggestions Found!"
 
     } catch (error: any) {
         loading_decomp_suggestions.value = false;
-        decomp_status.value = error; 
+        showMessage("Decomposition Error!", error, true);
         return "No Suggestions Found."
     }
 }
 
 const decompose = async (event: any, affix: any, li_vec: any): Promise<string> => {
-    decomp_status.value = "Selected " + li_vec;
     try {
         // communicate with backend MG API
         const build_mg_response = await fetch('http://127.0.0.1:8000/decompose', { // Adjust the URL as necessary
@@ -130,16 +130,14 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
 
         // update the frontend
         decomp_suggestions.value = [];
+        showMessage("Success!", `Decomposition of ${affix} Successful.`, false);
         switchTab(2);
         reload();
 
-        // set the updated values for grammar
-        // setMGSize(data.size);
-        decomp_status.value = "Decomposed!"
         return "Success!"
     } catch (error: any) {
         console.error('Error:', error);
-        decomp_status.value = error;
+        showMessage("Error!", `Decomposition of ${affix} Failed.`, true);
         return "Failed."
     }
 }
@@ -147,6 +145,7 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
 
 <template>
   <div class="flex flex-wrap">
+  <Toast />
   <div class="card flex justify-content-left">
           <div class="flex flex-column h-full">
               <div class="flex align-items-center justify-content-between px-4 pt-3 flex-shrink-0">
@@ -272,7 +271,6 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
                             <li v-for="li in li_vec" :key="li">{{ li }}</li>
                         </ul>
                     </div>
-                    <p>{{ decomp_status }}</p>
                     </template>
                     <template #footer>
                     <div class="flex gap-3 mt-1" style="width: 30em;">
