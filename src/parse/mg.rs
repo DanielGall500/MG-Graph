@@ -1,10 +1,11 @@
 use neo4rs::{query, Graph};
 use std::error::Error;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::collections::HashSet;
 use crate::cypher::cquery::CQueryStorage;
+use std::fmt;
 
 #[derive(Clone)]
 pub struct GeneralGraph {
@@ -225,16 +226,35 @@ pub enum LIRelation {
     State, // x
 }
 
-// #[derive(Debug)]
+// RENAME TO MG
 impl MGParser {
     pub fn new() -> Self {
-        Self{
+        Self {
             mg: Vec::new(),
 
             // states are updated automatically when new MGs are added
             // to the graph. Note they do not update upon running update_grammar
             states: HashSet::new(),
         }
+    }
+
+    /*
+    TODO:
+    - Check that the below outputs the MG correctly.
+    - Change Parser to MG simply.
+    - Update textbox with current MGs. */
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut mg_as_str: String = String::from("");
+        for li in self.mg.iter() {
+            let m = li.morph.clone(); // should this be &str?
+            let fb = li.bundle.clone();
+            let fb_as_str: String = fb.iter().map(|x| x.raw.clone()).collect::<Vec<String>>().join(" ");
+
+            let li_line = format!("{} :: {};\n", m.as_str(), fb_as_str.as_str());
+            mg_as_str.push_str(li_line.as_str()); 
+        }
+        let mg = self.from_json("recent");
+        write!(f, "{}", mg_as_str)
     }
 
     pub fn get_grammar(&self) -> &Vec<LexicalItem> {
@@ -333,6 +353,13 @@ impl MGParser {
         Ok(())
     }
 
+    pub fn from_json(&self, title: &str) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
+        let path: String = format!("./parse/grammar_parsed_{}.json", title);
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let config: Vec<LexicalItem> = serde_json::from_reader(reader)?;
+        Ok(config)
+    }
 
     pub fn parse_grammar_representation(&mut self, minimalist_grammar: &str) -> Result<&Vec<LexicalItem>, Box<dyn Error>> {
         self.mg.clear();

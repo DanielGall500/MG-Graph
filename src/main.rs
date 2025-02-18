@@ -61,7 +61,7 @@ async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) {
         let mut mg_parser = data.mg_parser.lock().await;
         mg_parser.update_grammar(updated);
 
-        match mg_parser.to_json("decomposed.json") {
+        match mg_parser.to_json("recent") {
             Ok(()) => println!("Updated JSON with decomposition step."),
             Err(e) => eprintln!("{}",e),
         }
@@ -80,9 +80,8 @@ async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec
         Err(e) => println!("Invalid grammar parse: {}", e),
     }
 
-    let to_json = mg_parser.to_json("recent");
-    match to_json {
-        Ok(()) => println!("Successful JSON conversion."),
+    match mg_parser.to_json("recent") {
+        Ok(()) => println!("Successful JSON conversion for new MG parsing."),
         Err(e) => println!("Invalid JSON conversion: {}", e),
     }
     Ok(mg_parser.get_grammar().clone())
@@ -131,13 +130,15 @@ fn calculate_size_from_string(grammar: &str) -> f64 {
 }
 
 /* NEXT STEP */
-fn calculate_size_from_json() -> f64 {
+async fn calculate_size_from_json(data: web::Data<MGState>) -> f64 {
     /*
     TODO:
     - load in most recent JSON update.
     - it actually might be handy to have it in text form. so build some sort
         of conversion from JSON to text.
     - calculate size for the text format. */
+    let mut mg_parser = data.mg_parser.lock().await;
+    mg_parse
 
 }
 
