@@ -226,18 +226,7 @@ pub enum LIRelation {
     State, // x
 }
 
-// RENAME TO MG
-impl MGParser {
-    pub fn new() -> Self {
-        Self {
-            mg: Vec::new(),
-
-            // states are updated automatically when new MGs are added
-            // to the graph. Note they do not update upon running update_grammar
-            states: HashSet::new(),
-        }
-    }
-
+impl fmt::Display for MGParser {
     /*
     TODO:
     - Check that the below outputs the MG correctly.
@@ -253,8 +242,21 @@ impl MGParser {
             let li_line = format!("{} :: {};\n", m.as_str(), fb_as_str.as_str());
             mg_as_str.push_str(li_line.as_str()); 
         }
-        let mg = self.from_json("recent");
+        println!("{}", mg_as_str);
         write!(f, "{}", mg_as_str)
+    }
+}
+
+// RENAME TO MG
+impl MGParser {
+    pub fn new() -> Self {
+        Self {
+            mg: Vec::new(),
+
+            // states are updated automatically when new MGs are added
+            // to the graph. Note they do not update upon running update_grammar
+            states: HashSet::new(),
+        }
     }
 
     pub fn get_grammar(&self) -> &Vec<LexicalItem> {

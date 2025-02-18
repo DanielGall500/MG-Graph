@@ -30,6 +30,7 @@ struct GrammarInput {
 
 #[derive(Serialize)]
 struct GrammarSizeResponse {
+    grammar: String,
     size: f64,
 }
 
@@ -129,23 +130,17 @@ fn calculate_size_from_string(grammar: &str) -> f64 {
     size
 }
 
-/* NEXT STEP */
-async fn calculate_size_from_json(data: web::Data<MGState>) -> f64 {
-    /*
-    TODO:
-    - load in most recent JSON update.
-    - it actually might be handy to have it in text form. so build some sort
-        of conversion from JSON to text.
-    - calculate size for the text format. */
-    let mut mg_parser = data.mg_parser.lock().await;
-    mg_parse
+#[get("/calculate-size")]
+async fn request_calculate_size(data: web::Data<MGState>) -> HttpResponse {
+    println!("BEGINNING SIZE CALCULATION");
+    // calculate the size of the MG
+    // converts to a text representation first
+    let mg_parser = data.mg_parser.lock().await;
+    let mg_as_str = format!("{}", mg_parser);
+    let size: f64 = calculate_size_from_string(&mg_as_str);
+    println!("NEW SIZE: {}", size);
 
-}
-
-#[post("/calculate-size")]
-async fn request_calculate_size() -> HttpResponse {
-    let size: f64 = calculate_size_from_json();
-    let response = GrammarSizeResponse { size };
+    let response = GrammarSizeResponse { grammar: mg_as_str, size };
     HttpResponse::Ok().json(response)
 }
 
@@ -156,7 +151,9 @@ async fn build_initial_mg(data: web::Data<MGState>, input: web::Json<GrammarInpu
     update_mg(&data, new_mg.unwrap()).await;
 
     let size: f64 = calculate_size_from_string(&input.grammar);
-    HttpResponse::Ok().json(size)
+    println!("Size of MG: {}", size);
+    let response = GrammarSizeResponse { grammar: input.grammar.clone(), size };
+    HttpResponse::Ok().json(response)
 }
 
 

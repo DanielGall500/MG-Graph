@@ -208,11 +208,11 @@ impl Decomposer {
                     li_similarity_vec = li_indices.iter()
                     .map(|x| self.get_syntactic_similarity(mg.get(x.clone()).unwrap_or(&empty_li), affix_li)).collect();
 
-                    println!("Similarities of {}:", affix_li.morph);
-                    for s in &li_similarity_vec {
-                        println!("{}", s);
-                    }
-                    println!("----");
+                    // println!("Similarities of {}:", affix_li.morph);
+                    // for s in &li_similarity_vec {
+                    //  println!("{}", s);
+                    // }
+                    // println!("----");
 
                     total_sim = li_similarity_vec.iter().sum(); 
                     count = li_similarity_vec.len();
