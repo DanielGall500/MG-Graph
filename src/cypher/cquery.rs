@@ -34,6 +34,11 @@ impl CQueryStorage {
         self.queries.get(q_id).expect(&format!("No Query Available For ID {}", q_id))
     }
 
+    pub fn get_remove_redundant_nodes(&self) -> &CQuery {
+        const Q_ID: &str = "remove_redundant_nodes";
+        self.get_query(Q_ID)
+    }
+
     pub fn get_clear_graph(&self) -> &CQuery {
         const Q_ID: &str = "clear_graph";
         self.get_query(Q_ID)
