@@ -88,10 +88,6 @@ async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec
     Ok(mg_parser.get_grammar().clone())
 }
 
-/* TODO
-- MG needs to be updated properly.
- */
-
 async fn update_grammar_graph(data: &web::Data<MGState>) {
     println!("Updating Grammar Graph");
     let db = &data.graph_db;
@@ -154,6 +150,20 @@ async fn build_initial_mg(data: web::Data<MGState>, input: web::Json<GrammarInpu
     println!("Size of MG: {}", size);
     let response = GrammarSizeResponse { grammar: input.grammar.clone(), size };
     HttpResponse::Ok().json(response)
+}
+
+#[derive(Deserialize)]
+struct CombinationInput {
+    state_a: String,
+    state_b: String,
+}
+#[post("/combine")]
+async fn combine(data: web::Data<MGState>, input: web::Json<CombinationInput>) -> HttpResponse {
+    let mut mg_parser = data.mg_parser.lock().await;
+    /*
+    Should combine two states.
+     */
+    HttpResponse::Ok().into()
 }
 
 
@@ -298,6 +308,7 @@ async fn main() -> io::Result<()> {
             .service(decompose)
             .service(get_decompose_suggestions)
             .service(build_initial_mg)
+            .service(combine)
     })
     .bind(("127.0.0.1", 8000))? // the actual route that it is hosted on
     .workers(2)

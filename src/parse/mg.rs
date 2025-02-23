@@ -80,7 +80,6 @@ impl GeneralGraph {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub async fn remove_relationship(&self, cat_a: &str, node_a_key: &str, node_a_val: &str, 
         cat_b: &str, node_b_key: &str, node_b_val: &str, 
         cat_rel: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>> {
@@ -93,6 +92,12 @@ impl GeneralGraph {
     pub async fn clear(&self) -> Result<(), neo4rs::Error> {
         let clear_graph_query: &str = &self.queries.get_clear_graph().query;
         self.run(clear_graph_query).await
+    }
+
+    /* Removes redundancy. */
+    pub async fn remove_redundant_nodes(&self) -> Result<(), neo4rs::Error> {
+        let remove_redundant_nodes_query: &str = &self.queries.get_remove_redundant_nodes().query;
+        self.run(remove_redundant_nodes_query).await
     }
 }
 
@@ -128,6 +133,9 @@ impl GrammarGraph {
         Ok(())
     }
 
+    /*
+    TODO: Fix for cases where the LI is the same.
+    */
     pub async fn set_merge_property(&self, li_morph: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{
         println!("Setting Relationship Property");
         self.base.set_relationship_property("li", li_morph, prop_key, prop_val).await?;
@@ -136,6 +144,7 @@ impl GrammarGraph {
 
     pub async fn create_state(&self, name: &str) -> Result<(), Box<dyn Error>> {
         self.base.create_node("State", "name", name).await?;
+        self.set_state_property("name", name, "move", "").await?;
         Ok(())
     }
 
@@ -143,6 +152,9 @@ impl GrammarGraph {
     pub async fn connect_states(&self, state_a: &str, state_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
         self.base.set_relationship("State", "name", state_a, 
         "State", "name", state_b, "MERGE", "li", rel).await?;
+        
+        // NOTE: Fix for relationships of the same LI
+        self.set_merge_property(rel, "move", "").await?;
         Ok(())
     }
 
@@ -194,6 +206,11 @@ impl GrammarGraph {
 
     pub async fn clear(&self) -> Result<(), neo4rs::Error> {
         self.base.clear().await
+    }
+
+    pub async fn remove_redundancy(&self) -> Result<(), neo4rs::Error> {
+        println!("Removing redundancy from graph.");
+        self.base.remove_redundant_nodes().await
     }
 
 }
@@ -342,6 +359,10 @@ impl MGParser {
                 }
             }
         }
+
+        // combine nodes which do not need to be separate
+        gg.remove_redundancy().await?;
+
         Ok(gg.clone())
     }
 
