@@ -5,15 +5,10 @@
 </template>
 
 <script setup lang="ts">
-// import NeoVis from 'neovis.js'
-import dotenv from 'dotenv'
 import {ref} from 'vue'
 import NeoVis from 'neovis.js/dist/neovis.js';
 
-// dotenv.config()
-
-// FIX THIS!!
-const passwordEnvVariable = "almonds1"
+const passwordEnvVariable = import.meta.env.VITE_NEO_PW; 
 
 const containerId = "graph-vis-box"
 const serverUsername = "neo4j"

@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import GraphVis from '@/components/GraphVis.vue'
 import { useToast } from 'primevue/usetoast';
+import { Form } from '@primevue/forms';
 
 const selectedCity = ref();
 const sizeAlgorithms = ref([
@@ -16,6 +17,8 @@ const activeTab = ref(0);
 const graph_vis = ref();
 const decomp_suggestions = ref();
 const loading_decomp_suggestions = ref(false);
+const state_a_combine = ref("");
+const state_b_combine = ref("");
 const toast = useToast();
 
 function showMessage(summary: string, detail: string, is_error: boolean) {
@@ -138,6 +141,46 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
     } catch (error: any) {
         console.error('Error:', error);
         showMessage("Error!", `Decomposition of ${affix} Failed.`, true);
+        return "Failed."
+    }
+}
+
+const onCombineStates = async (): Promise<string> => {
+    try {
+        // communicate with backend MG API
+        const build_mg_response = await fetch('http://127.0.0.1:8000/combine', { // Adjust the URL as necessary
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                state_a: state_a_combine.value,
+                state_b: state_b_combine.value,
+             }), 
+        });
+
+        // const build_mg_data = await build_mg_response.json();
+
+        const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { // Adjust the URL as necessary
+            method: 'GET',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+        });
+        const size_data = await size_response.json();
+        setMGSize(size_data.size);
+        setGrammarTextBox(size_data.grammar);
+
+        // update the frontend
+        decomp_suggestions.value = [];
+        showMessage("Success!", `Combination Successful.`, false);
+        switchTab(2);
+        reload();
+
+        return "Success!"
+    } catch (error: any) {
+        console.error('Error:', error);
+        showMessage("Error!", `Combination Failed.`, true);
         return "Failed."
     }
 }
@@ -271,6 +314,16 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
                             <li v-for="li in li_vec" :key="li">{{ li }}</li>
                         </ul>
                     </div>
+                    <input v-model="state_a_combine" placeholder="State A" />
+                    <input v-model="state_b_combine" placeholder="State B" />
+                    <Button @click="onCombineStates" type="submit" severity="secondary" label="Submit" />
+                    <Form v-slot="$form" @submit="onCombineStates" class="flex flex-col gap-4 w-full sm:w-56">
+                        <div class="flex flex-col gap-1">
+                            <InputText name="username" type="text" placeholder="Username" fluid />
+                            <Message v-if="$form.username?.invalid" severity="error" size="small" variant="simple">{{ $form.username.error?.message }}</Message>
+                        </div>
+                        <Button type="submit" severity="secondary" label="Submit" />
+                    </Form>
                     </template>
                     <template #footer>
                     <div class="flex gap-3 mt-1" style="width: 30em;">

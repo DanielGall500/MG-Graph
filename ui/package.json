@@ -14,7 +14,7 @@
   },
   "type": "module",
   "dependencies": {
-    "dotenv": "^16.4.7",
+    "@primevue/forms": "^4.2.5",
     "neovis.js": "^2.1.0",
     "pinia": "^2.1.7",
     "primeflex": "^3.3.1",
