@@ -3,6 +3,7 @@ use actix_web::{get, web, App, post,
     HttpResponse, HttpServer, Responder, 
     http::header, middleware::Logger};
 use actix_cors::Cors;
+use parse::parser::Parser;
 use serde::{Deserialize, Serialize};
 use core::panic;
 use tokio::sync::Mutex;
@@ -18,7 +19,8 @@ mod parse;
 
 use calculator::Calculate;
 use parse::{
-    mg::{GrammarGraph, MGParser, LexicalItem},
+    graph::GrammarGraph,
+    mg::{MG, LexicalItem},
     grammar::Grammar,
     decomp::{Decomposer,Affix},
 };
@@ -41,7 +43,7 @@ async fn health_check() -> impl Responder {
 
 struct MGState {
     mg: Mutex<Vec<LexicalItem>>,
-    mg_parser: Mutex<MGParser>,
+    mg_parser: Mutex<MG>,
     graph_db: Arc<GrammarGraph>,
     decomposer: Mutex<Decomposer>
 }
@@ -73,9 +75,9 @@ async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) {
 async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
     println!("Parsing New MG");
     let mut mg_parser = data.mg_parser.lock().await;
-    let grammar_rep = mg_parser.parse_grammar_representation(grammar);
-    match grammar_rep {
-        Ok(mg) => {
+
+    match Parser::convert_text_to_stored(grammar, &mut mg_parser) {
+        Ok(()) => {
             println!("Successful grammar parsing.");
         }
         Err(e) => println!("Invalid grammar parse: {}", e),
@@ -107,7 +109,7 @@ async fn update_grammar_graph(data: &web::Data<MGState>) {
         }
 
 
-        match mg_parser.create_grammar_graph(db).await {
+        match Parser::convert_stored_to_graph(&mut mg_parser, db).await {
             Ok(g) => println!("Graph updated successfully."),
             Err(e) => println!("Problem updating graph: {}", e)
         }
@@ -284,7 +286,7 @@ async fn main() -> io::Result<()> {
     let mg_state = web::Data::new(
         MGState {
         mg: Mutex::new(Vec::new()),
-        mg_parser: Mutex::new(MGParser::new()),
+        mg_parser: Mutex::new(MG::new()),
         graph_db: Arc::new(grammar_graph),
         decomposer: Mutex::new(Decomposer::new()),
     });

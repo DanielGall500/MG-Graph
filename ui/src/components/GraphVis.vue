@@ -8,12 +8,13 @@
 import {ref} from 'vue'
 import NeoVis from 'neovis.js/dist/neovis.js';
 
+const usernameEnvVariable = import.meta.env.VITE_NEO_USER;
 const passwordEnvVariable = import.meta.env.VITE_NEO_PW; 
 
-const containerId = "graph-vis-box"
-const serverUsername = "neo4j"
-const serverPassword = passwordEnvVariable
-const serverURL = "bolt://localhost:7687/"
+const containerId = "graph-vis-box";
+const serverUsername = usernameEnvVariable;
+const serverPassword = passwordEnvVariable;
+const serverURL = "bolt://localhost:7687/";
 
 const status = ref()
 
