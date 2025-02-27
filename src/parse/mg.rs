@@ -5,6 +5,13 @@ use std::error::Error;
 use std::fs::File;
 use std::fmt;
 
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct State {
+    pub id: String,
+    pub is_intermediate: bool
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Feature {
     pub raw: String,
@@ -22,6 +29,8 @@ pub struct LexicalItem {
 pub enum LIRelation {
     LMerge, // =x
     RMerge, // x= 
+    LMergeInter, // =x where it there is more than one merge
+    RMergeInter, // x= where there is more than one merge
     LMergeHead, // =>x
     RMergeHead, // x<=
     MinusMove, // -x
