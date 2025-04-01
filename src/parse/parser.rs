@@ -220,7 +220,7 @@ impl Parser {
                         // recent state
                         println!("Appending move feature {}", f.id);
                         if let Some(recent_op) = all_states.last_mut() {
-                            recent_op.moves.push(f.id.clone());
+                            recent_op.moves.push(f.raw.clone());
                         }
                     }
 
@@ -268,11 +268,10 @@ impl Parser {
                 println!("Working on state {}", s.id);
 
                 if num_states_in_li == 1 {
-                    /*
                     for m in s.moves.iter() {
                         println!("Setting the move property of that state");
-                        mg_graph.set_state_property("name", &li.morph, "move", m).await?;
-                    }*/
+                        mg_graph.set_state_property("name", s.id.as_str(), "move", m).await?;
+                    }
                 }
                 // laughs :: =d +k v; Mary :: d -k
                 // IS FIRST AND NOT INTERMEDIATE
@@ -326,11 +325,8 @@ impl Parser {
                 }
                 // TIME TO LEAVE INTERMEDIATE STATES
                 else if i == merge_state_indx && is_intermediate {
-                    // next_merge_li = s.clone();
-
                     // <<HeadLI.LI>.LI>
                     new_state = format!("<{}.{}>", previous, s.id);
-                    // mg_graph.create_state(new_state.as_str()).await?;
 
                     // TODO
                     // Q: should inter states be stored as states internally?
@@ -355,11 +351,9 @@ impl Parser {
                         }
 
                     }
-                    // previous = new_state.to_string().clone();
                 }
                 // NOT FIRST AND INTERMEDIATE
                 else if is_intermediate {
-                    // next_merge_li = s.clone();
 
                     // <<HeadLI.LI>.LI>
                     println!("Is Intermediate!");
@@ -394,139 +388,6 @@ impl Parser {
                 }
 
             }
-
-            /*
-            // the first states are the intermediate states, if we have any.
-            if !intermediate_merge_states.is_empty() {
-                let mut previous: String = String::from("");
-                let mut non_head_state: String;
-                let mut new_state: String;
-                let mut next_merge_li: &str;
-                let num_intermediate_states: usize = intermediate_merge_states.iter().count();
-                for (i, s) in intermediate_merge_states.iter().enumerate() {
-
-                    
-                    if i == num_intermediate_states-1 {
-                        break;
-                    }
-                    // d => <LI.d> => v
-                    //
-                    // first create an intermediate state <LI.d>
-                    // where d is the ID of the first feature.
-                    non_head_state = s.id.clone();
-                    next_merge_li = merge_ids.get(i).unwrap().as_str();
-                    if i == 0 {
-                        // if s is the first feature
-                        // <HeadLI.LI>
-                        new_state = format!("<LI.{}>", non_head_state).clone();
-
-                        // for the active feature, we must make sure there is 
-                        // a node for both the non-head and head.
-                        // The below creates a node **if none exists**.
-                        // Note: This may lead to some issues and should
-                        // be more properly defined.
-                        mg_graph.create_state(non_head_state.as_str()).await?;
-                        mg_graph.create_state(new_state.clone().as_str()).await?;
-                        mg_stored.states.insert(new_state.clone());
-
-                        mg_graph.connect_states(&non_head_state, 
-                            &new_state, 
-                            next_merge_li).await?;
-                    }
-                    else {
-                        // next_merge_li = s.clone();
-
-                        // <<HeadLI.LI>.LI>
-                        new_state = format!("<{}.{}>", previous, non_head_state).clone();
-                        mg_graph.create_state(new_state.as_str()).await?;
-
-                        // TODO
-                        // Q: should inter states be stored as states internally?
-                        mg_stored.states.insert(new_state.clone());
-
-                        // the non-head state can be the merge here
-                        // as it's being brought into the derivation.
-                        // for non-intermediate nodes it's the head
-                        // which is being brought into the derivation
-
-                        mg_graph.connect_states(previous.as_str(), 
-                            &new_state, 
-                            next_merge_li).await?;
-                    }
-
-                    // the new state alpha which keeps track of
-                    // which state will merge with the final state
-                    println!("Setting merge state to {}", s.id.as_str());
-
-                    
-                    // TODO: A new struct needs to be created to properly
-                    // represent states as states and features are not
-                    // the same.
-                    //
-                    // TODO: this should just reference the index
-                    // of the ALL_STATES vector or a REFERENCE.
-                    // NEXT STEP: do the above and then have the moves assigned to
-                    // their correct operation. State / opertaion lines are kind of blurred
-                    // but sure what can ya do.
-                    merge_state = Some(State {
-                        id: new_state.clone(),
-                        is_intermediate: true
-                    });
-
-                    // update the previous state in case
-                    // we need another intermediate node.
-                    previous = new_state;
-                }
-
-                /*
-                merge_state = Feature {
-                    id: previous,
-                    raw: String::from(""),
-                    rel: LIRelation::PlusMove,
-                };
-                */
-
-                // TODO
-                // Need to make sure that when there is intermediate states,
-                // the state which is actually merged with the final full state
-                // is the right one. Namely, rhe last of the intermediate states.
-                // Then, it should be working!
-                // It would be worth redoing the logic down below anyway honestly.
-                //
-            }
-            */
-
-
-
-            /*
-            println!("Connecting States");
-            // there should at least be a final state, either one it becomes after feature checking
-            // or one that it currently is with leftover features
-            if let Some(state_b) = final_state.take() {
-                println!("Setting Property For {}", li.morph);
-
-                // create a relationship between a potential state A and B (handles LIs with selectional features)
-                if let Some(state_a) = merge_state.take() {
-                    println!("Connecting {} and {}", state_a.id, state_b.id);
-                    let final_merge = merge_ids.last().unwrap();
-                    mg_graph.connect_states(&state_a.id, &state_b.id, final_merge).await?;
-                }
-
-                // attach any movement features to the newly created relationship
-                if let Some(movement) = move_hoover.take() {
-                    if is_head {
-                        // heads are represented as a relationship and as such the property
-                        // of a relationship is set
-                        mg_graph.set_merge_property(&li.morph, "move", &movement.raw).await?;
-                    }
-                    else {
-                        // non-heads are represented as a state and as such the property
-                        // of a state / node is set
-                        mg_graph.set_state_property("name", &state_b.id, "move", &movement.raw).await?;
-                    }
-                }
-            }
-            */
         }
 
         // combine nodes which do not need to be separate
