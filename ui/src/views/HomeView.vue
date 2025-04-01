@@ -273,6 +273,8 @@ const onCombineStates = async (): Promise<string> => {
                         -s :: =>v +k t;
                         <br>
                         -ed :: =>v +k t;
+                        <br>
+                        praise :: =d =d +k t;
                         <br><br>
                         You can additionally choose the algorithm you would like to use to calculate the grammar size.
                     </p>

@@ -45,18 +45,24 @@ impl Parser {
                     .map(|c| c.trim().to_string());
 
                 // determine whether we require any intermediate states
-                let num_features: usize = individual_feature_split.clone().count();
-                let num_merges_required: usize = individual_feature_split.clone()
+                let num_features: i8 = individual_feature_split.clone().count() as i8;
+                let num_merges_required: i8 = individual_feature_split.clone()
                     .filter(|c| c.contains("="))
-                    .count();
+                    .count() as i8;
+
+                let num_movement_features: i8 = individual_feature_split.clone()
+                    .filter(|c| c.contains("+") || c.contains("-"))
+                    .count() as i8;
+
                 let requires_intermediate = num_merges_required > 1;
+
 
                 // STEP 3: iterate over each feature in the LI and add
                 // to the feature bundle
-                let mut is_last: bool = false; 
+                let mut is_last_selec: bool = false; 
                 for (i, feature) in individual_feature_split.enumerate() {
-                    is_last = i == num_features-1;
-                        let no_intermediate_states = num_merges_required <= 1;
+                    is_last_selec = (i as i8 - num_movement_features == 
+                        num_features-num_movement_features-1);
                     
                     let (relation, id) = 
                     if feature.starts_with("=>") {
@@ -64,7 +70,7 @@ impl Parser {
 
                         // determine whether the merge is an intermediate
                         // state or not
-                        let relation: LIRelation = if is_last || no_intermediate_states {
+                        let relation: LIRelation = if is_last_selec || !requires_intermediate {
                                 LIRelation::LMerge
                         } 
                         else {
@@ -73,14 +79,14 @@ impl Parser {
                         (relation, feature[2..].to_string())
                     }
                     else if feature.starts_with("=") {
-                        let relation: LIRelation = if is_last || no_intermediate_states {
+                        let relation: LIRelation = if is_last_selec || !requires_intermediate {
                                 LIRelation::LMerge
                         } else {
                                 LIRelation::LMergeInter
                         };
                         (relation, feature[1..].to_string())
                     } else if feature.ends_with("=") {
-                        let relation: LIRelation = if is_last || no_intermediate_states {
+                        let relation: LIRelation = if is_last_selec || !requires_intermediate {
                                 LIRelation::RMerge
                         } else {
                                 LIRelation::RMergeInter
@@ -146,17 +152,21 @@ impl Parser {
             println!("Working on LI {}", li.morph);
 
             // if the first feature is left or right merge, the LI is a head
+            // we skip over adding non-heads until they appear in an LI
+            // TODO: Don't skip it all together
             if let Some(first_feature) = bundle.first() {
                 is_head = matches!(first_feature.rel, LIRelation::LMerge) || 
                     matches!(first_feature.rel, LIRelation::RMerge) || 
                     matches!(first_feature.rel, LIRelation::LMergeInter) ||
                     matches!(first_feature.rel, LIRelation::RMergeInter);
+                println!("LI is head? {}", is_head);
             }
             else {
                 eprintln!("LI Contains No Features: {}", li.morph);
                 continue;
             }
             
+            // iterate over the features of this LI by (index, feature)
             for (i,f) in bundle.iter().enumerate() {
                 
                 match f.rel {
@@ -164,6 +174,7 @@ impl Parser {
                     LIRelation::RMerge | 
                     LIRelation::LMergeHead | 
                     LIRelation::RMergeHead => { 
+                        // laugh :: *=v* +k t;
                         total_merges += 1;
                         let new_state = State {
                             id: f.id.clone(),
@@ -175,6 +186,7 @@ impl Parser {
 
                     LIRelation::LMergeInter |
                     LIRelation::RMergeInter => { 
+                        // laugh at :: *=v* =v +k t;
                         total_merges += 1;
                         num_intermediate_states += 1;
 
@@ -204,6 +216,9 @@ impl Parser {
                     LIRelation::PlusMove | 
                     LIRelation::MinusMove => {
                         // move_hoover = Some(f),
+                        // append a movement feature to the most
+                        // recent state
+                        println!("Appending move feature {}", f.id);
                         if let Some(recent_op) = all_states.last_mut() {
                             recent_op.moves.push(f.id.clone());
                         }
@@ -231,7 +246,7 @@ impl Parser {
                     LIRelation::RMerge) 
                 && !mg_stored.states.contains(f.id.as_str()) {
                     mg_stored.states.insert(f.id.to_string());
-                    mg_graph.create_state(f.id.as_str()).await?;
+                    mg_graph.create_state(f.id.as_str(), None).await?;
                 }
 
             }
@@ -242,23 +257,30 @@ impl Parser {
             let mut non_head_state: String;
             let mut new_state: String;
             let mut next_merge_li: &str;
-            let mut num_states_in_LI: usize = all_states.len();
+            let num_states_in_li: usize = all_states.len();
+
+            // iterate over the states which are connected for this
+            // specific LI and connect them.
             for (i, s) in all_states.iter().enumerate() {
                 let intermediate_encountered: bool = false;
                 let is_intermediate = s.is_intermediate;
 
                 println!("Working on state {}", s.id);
 
-                if num_states_in_LI == 1 {
+                if num_states_in_li == 1 {
+                    /*
                     for m in s.moves.iter() {
-                        mg_graph.set_state_property("name", &li.morph, "move", m);
-                    }
+                        println!("Setting the move property of that state");
+                        mg_graph.set_state_property("name", &li.morph, "move", m).await?;
+                    }*/
                 }
                 // laughs :: =d +k v; Mary :: d -k
                 // IS FIRST AND NOT INTERMEDIATE
                 else if i == 0 && !is_intermediate {
                     if let Some(output_state) = final_state.take() {
-                        mg_graph.connect_states(&s.id, &output_state.id, &li.morph).await?;
+
+                        // connect the current state and the output state
+                        mg_graph.connect_states(&s.id, &output_state.id, &li.morph, None, None).await?;
 
                         for m in s.moves.iter() {
                             // heads are represented as a relationship and as such the property
@@ -281,15 +303,19 @@ impl Parser {
                     // Note: This may lead to some issues and should
                     // be more properly defined.
                     
-                    mg_graph.create_state(non_head_state.as_str()).await?;
-                    mg_graph.create_state(new_state.as_str()).await?;
+                    // mg_graph.create_state(non_head_state.as_str()).await?; //redundant?
+                    mg_graph.create_state(new_state.as_str(), Some("Interm")).await?;
 
                     // make this automatic
                     mg_stored.states.insert(new_state.clone().to_string());
 
+                    println!("Connecting two states...");
+                    println!("{}{}", non_head_state, new_state);
                     mg_graph.connect_states(&non_head_state, 
                         &new_state, 
-                        &li.morph).await?;
+                        &li.morph,
+                        None,
+                        Some("Interm")).await?;
 
                     for m in s.moves.iter() {
                         // heads are represented as a relationship and as such the property
@@ -318,7 +344,9 @@ impl Parser {
                     if let Some(output_state) = final_state.take() {
                         mg_graph.connect_states(previous.as_str(), 
                             &output_state.id, 
-                            s.id.as_str()).await?;
+                            s.id.as_str(),
+                            Some("Interm"),
+                            None).await?;
 
                         for m in s.moves.iter() {
                             // heads are represented as a relationship and as such the property
@@ -337,7 +365,7 @@ impl Parser {
                     println!("Is Intermediate!");
                     new_state = format!("<{}.{}>", previous, s.id);
                     println!("Creating state {}", new_state);
-                    mg_graph.create_state(new_state.as_str()).await?;
+                    mg_graph.create_state(new_state.as_str(), Some("Interm")).await?;
 
                     // TODO
                     // Q: should inter states be stored as states internally?
@@ -350,7 +378,9 @@ impl Parser {
 
                     mg_graph.connect_states(previous.as_str(), 
                         &new_state, 
-                        s.id.as_str()).await?;
+                        s.id.as_str(),
+                        Some("Interm"),
+                        Some("Interm")).await?;
 
                     for m in s.moves.iter() {
                         // heads are represented as a relationship and as such the property

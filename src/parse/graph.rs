@@ -137,16 +137,17 @@ impl GrammarGraph {
         Ok(())
     }
 
-    pub async fn create_state(&self, name: &str) -> Result<(), Box<dyn Error>> {
-        self.base.create_node("State", "name", name).await?;
+    pub async fn create_state(&self, name: &str, type_: Option<&str>) -> Result<(), Box<dyn Error>> {
+        self.base.create_node(type_.unwrap_or("State"), "name", name).await?;
         self.set_state_property("name", name, "move", "").await?;
         Ok(())
     }
 
     // "MATCH (a:{} {{ name: \"{}\" }})-[edge:MERGE {{ li: \'{}\' }}]->(b:{} {{name: \"{}\" }}) DELETE edge"
-    pub async fn connect_states(&self, state_a: &str, state_b: &str, rel: &str) -> Result<(), Box<dyn Error>> {
-        self.base.set_relationship("State", "name", state_a, 
-        "State", "name", state_b, "MERGE", "li", rel).await?;
+    pub async fn connect_states(&self, state_a: &str, state_b: &str, rel: &str, 
+        state_a_type_: Option<&str>, state_b_type_: Option<&str>) -> Result<(), Box<dyn Error>> {
+        self.base.set_relationship(state_a_type_.unwrap_or("State"), "name", state_a, 
+        state_b_type_.unwrap_or("State"), "name", state_b, "MERGE", "li", rel).await?;
         
         // NOTE: Fix for relationships of the same LI
         self.set_merge_property(rel, "move", "").await?;
