@@ -9,7 +9,8 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct State {
     pub id: String,
-    pub is_intermediate: bool
+    pub is_intermediate: bool,
+    pub moves: Vec<String>
 }
 
 #[derive(Serialize, Deserialize, Clone)]
