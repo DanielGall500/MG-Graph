@@ -150,6 +150,32 @@ impl CQueryStorage {
         }
     }
 
+    pub fn get_possible_pathways(&self, start_state: &str, end_state: &str) -> CQuery {
+        const Q_ID: &str = "get_possible_paths";
+        let q = self.get_query(Q_ID);
+
+        CQuery {
+            name: q.name.clone(),
+            query: q.query
+                .replace("{START_STATE}", start_state)
+                .replace("{END_STATE}", end_state),
+            desc: q.desc.clone()
+        }
+    }
+
+    pub fn get_shortest_pathways(&self, start_state: &str, end_state: &str) -> CQuery {
+        const Q_ID: &str = "get_shortest_paths";
+        let q = self.get_query(Q_ID);
+
+        CQuery {
+            name: q.name.clone(),
+            query: q.query
+                .replace("{START_STATE}", start_state)
+                .replace("{END_STATE}", end_state),
+            desc: q.desc.clone()
+        }
+    }
+
 }
 
 pub fn load_queries_from_json(path: &str) -> Result<HashMap<String, CQuery>, Box<dyn Error>> {
