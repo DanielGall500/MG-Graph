@@ -256,6 +256,23 @@ async fn get_decompose_suggestions(data: web::Data<MGState>) -> HttpResponse {
     HttpResponse::Ok().json(response)
 }
 
+#[derive(Serialize, Deserialize)]
+struct PathwayResponse {
+    all_pathways: Vec<String>,
+    shortest_pathways: Vec<String>,
+}
+#[get("/pathways")]
+async fn pathways(data: web::Data<MGState>) -> HttpResponse {
+    let graph = &data.graph_db;
+    let poss_paths = graph.get_possible_paths().await.unwrap();
+    let shortest_paths = graph.get_shortest_paths().await.unwrap();
+    let response: PathwayResponse = PathwayResponse {
+        all_pathways: poss_paths,
+        shortest_pathways: shortest_paths,
+    };
+    HttpResponse::Ok().json(response)
+}
+
 const GRAPH_DATABASE_ADDR: &str = "neo4j://localhost:7687";
 const GRAPH_DATABASE_USER: &str = "neo4j";
 
@@ -311,6 +328,7 @@ async fn main() -> io::Result<()> {
             .service(get_decompose_suggestions)
             .service(build_initial_mg)
             .service(combine)
+            .service(pathways)
     })
     .bind(("127.0.0.1", 8000))? // the actual route that it is hosted on
     .workers(2)
