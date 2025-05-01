@@ -1,5 +1,6 @@
 use neo4rs::{query, Graph};
-use std::error::Error;
+use serde_json::Value;
+use std::{collections::HashMap, error::Error};
 use crate::cypher::cquery::CQueryStorage;
 
 #[derive(Clone)]
@@ -25,7 +26,7 @@ impl GeneralGraph {
         self.graph.run(query(q))
         .await
         .map_err(|e| {
-            eprintln!("Graph Query Failed: {:?}", e);
+            eprintln!("Graph Query Failed on Run: {:?}", e);
             e
         })
     }
@@ -81,6 +82,40 @@ impl GeneralGraph {
         let delete_rel = self.queries.get_delete_relationship(cat_a, node_a_key, node_a_val, cat_b, node_b_key, node_b_val, cat_rel, prop_key, prop_val);
         self.run(&delete_rel.query).await?;
         Ok(())
+    }
+
+    pub async fn get_possible_paths(&self, start_state: &str, end_state: &str) -> 
+    // Result<Vec<HashMap<String,Vec<String>>>, neo4rs::Error> {
+    Vec<String> {
+        let possible_paths_q = self.queries.get_possible_pathways(start_state, end_state);
+        let mut result = self.graph.execute(query(&possible_paths_q.query)).await.unwrap();
+
+        let mut paths = Vec::new();
+
+        while let Some(row) = result.next().await.transpose() {
+            let row = row.unwrap();
+            // let states: Vec<String> = row.get::<Vec<String>>("states").unwrap();
+            let lexical_items: Vec<String> = row.get::<Vec<String>>("items").unwrap();
+            let full_path = lexical_items.join(" => ");
+            
+            paths.push(full_path);
+        }
+        paths
+    }
+
+    pub async fn get_shortest_paths(&self, start_state: &str, end_state: &str) -> 
+        Vec<String> {
+        let shortest_paths_q = self.queries.get_shortest_pathways(start_state, end_state);
+        let mut result = self.graph.execute(query(&shortest_paths_q.query)).await.unwrap();
+        let mut paths = Vec::new();
+        while let Some(row) = result.next().await.transpose() {
+            let row = row.unwrap();
+            // let states: Vec<String> = row.get::<Vec<String>>("states").unwrap();
+            let lexical_items: Vec<String> = row.get::<Vec<String>>("items").unwrap();
+            let full_path = lexical_items.join(" => ");
+            paths.push(full_path);
+        }
+        paths
     }
 
     /* Empties the Graph Database */
@@ -198,6 +233,18 @@ impl GrammarGraph {
         self.base.delete_node("State", "name", &edge.state_a_id).await?;
         self.base.delete_node("State", "name", &edge.state_b_id).await?;
         Ok(())
+    }
+
+    pub async fn get_possible_paths(&self) -> Result<Vec<String>, neo4rs::Error> {
+        let start_state: &str = "d";
+        let end_state: &str = "t";
+        Ok(self.base.get_possible_paths(start_state,end_state).await)
+    }
+
+    pub async fn get_shortest_paths(&self) -> Result<Vec<String>, neo4rs::Error> {
+        let start_state: &str = "d";
+        let end_state: &str = "t";
+        Ok(self.base.get_shortest_paths(start_state,end_state).await)
     }
 
     pub async fn clear(&self) -> Result<(), neo4rs::Error> {

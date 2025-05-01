@@ -84,11 +84,6 @@ impl MG {
 }
 
 impl fmt::Display for MG {
-    /*
-    TODO:
-    - Check that the below outputs the MG correctly.
-    - Change Parser to MG simply.
-    - Update textbox with current MGs. */
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut mg_as_str: String = String::from("");
         for li in self.mg.iter() {
