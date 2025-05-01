@@ -21,6 +21,9 @@ const state_a_combine = ref("");
 const state_b_combine = ref("");
 const toast = useToast();
 
+const all_pathways = ref("");
+const shortest_pathways = ref("");
+
 function showMessage(summary: string, detail: string, is_error: boolean) {
     const sev = is_error ? "error" : "success";
     toast.add({
@@ -103,6 +106,37 @@ const get_suggestions = async(): Promise<string> => {
         loading_decomp_suggestions.value = false;
         showMessage("Decomposition Error!", error, true);
         return "No Suggestions Found."
+    }
+}
+
+const get_pathways = async(): Promise<string> => {
+    try {
+        const response = await fetch('http://127.0.0.1:8000/pathways', { 
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        // Check if the response is OK and the body is not empty
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const responseText = await response.text(); // Get the raw response text
+        if (responseText) {
+            const data = JSON.parse(responseText); // Parse it manually
+            all_pathways.value = data.all_pathways;
+            shortest_pathways.value = data.shortest_pathways;
+            showMessage("Pathways Found!", "Pathways successfully found.", false);
+            return "Pathways found!";
+        } else {
+            throw new Error("Empty response body");
+        }
+        
+    } catch (error: any) {
+        showMessage("Pathways Error!", error.message || error, true);
+        return "No Suggestions Found";
     }
 }
 
@@ -342,6 +376,30 @@ const onCombineStates = async (): Promise<string> => {
             <h1>MG-Graph Visualisation</h1>
             <h2>Size: {{  Math.round(mgSize)  }}</h2>
             <GraphVis ref="graph_vis"/>
+        </TabPanel>
+
+        <!--- Pathways Tab --->
+        <TabPanel header="Pathways" :activeIndex="activeTab">
+          <h1>View Potential Routes</h1>
+          <div class="flex gap-3 mt-1" style="width: 30em;">
+            <Button label="Calculate Potential Routes" class="w-full" @click="get_pathways"/>
+          </div>
+          <div>
+            <h2>All Pathways</h2>
+            <ul>
+                <li v-for="(item, index) in all_pathways" :key="index">
+                    {{ item }}
+                </li>
+            </ul>
+        </div>
+          <div>
+            <h2>Shortest Pathways</h2>
+            <ul>
+                <li v-for="(item, index) in shortest_pathways" :key="index">
+                    {{ item }}
+                </li>
+            </ul>
+        </div>
         </TabPanel>
     </TabView>
 
