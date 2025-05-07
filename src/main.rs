@@ -273,7 +273,8 @@ async fn pathways(data: web::Data<MGState>) -> HttpResponse {
     HttpResponse::Ok().json(response)
 }
 
-const GRAPH_DATABASE_ADDR: &str = "neo4j://localhost:7687";
+// note that address changes depending on the installation
+const GRAPH_DATABASE_ADDR: &str = "bolt://localhost:7687";
 const GRAPH_DATABASE_USER: &str = "neo4j";
 
 #[actix_web::main]
