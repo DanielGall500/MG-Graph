@@ -221,13 +221,13 @@ const onCombineStates = async (): Promise<string> => {
 </script>
 
 <template>
-  <div class="flex flex-wrap">
+  <div class="z-20 flex flex-wrap">
   <Toast />
-    <TabView @tab-change="reload" :active-index="activeTab">
+    <TabView class="z-20" @tab-change="reload" :active-index="activeTab">
         <!-- Editor Tab -->
         <TabPanel header="Editor" :activeIndex="activeTab">
             <div class="flex justify-content-right">
-                <Card class="flex-wrap" style="width: 80rem; height: 100vh; overflow: hidden">
+                <Card class="flex-wrap" style="width: 80rem; height: 100vh; ">
                     <template #title>Minimalist Grammar Editor</template>
                     <template #content>
                     <p class="flex-wrap m-0">
