@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div style="height: 20vh; width: 20vw;">
     <Card :id="containerId" class="visualisation"></Card>
   </div>
 </template>
@@ -67,7 +67,12 @@ function reload_vis() {
             }
         }
     })
-    vis.renderWithCypher("MATCH (n)-[r:MERGE]->(m) RETURN *;")
+    vis.renderWithCypher("MATCH (n)-[r]->(m) RETURN *;")
+    vis.registerOnEvent("completed", () => {
+      console.log("Completed rendering");
+      console.log("Nodes:", vis.network.body.data.nodes);
+      console.log("Edges:", vis.network.body.data.edges);
+    });
 
   status.value = "Success"
   } catch (error) {
