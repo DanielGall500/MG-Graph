@@ -3,7 +3,13 @@ import { ref, onMounted } from "vue";
 import Card from 'primevue/card';
 import Dialog from "primevue/dialog";
 
-const grammars = ref([]);
+interface MGExample {
+  title: string;
+  lang: string,
+  grammar: string
+}
+
+const grammars = ref<MGExample[]>([]);
 const new_grammar_title = ref("");
 const new_grammar_lang = ref("");
 const new_grammar_text = ref("");
@@ -14,7 +20,7 @@ async function saveGrammar() {
     try {
         const new_grammar_as_list = new_grammar_text.value.split(";").map(item => item.trim());
 
-        const response = await fetch('http://127.0.0.1:8000/save', { // Adjust the URL as necessary
+        const response = await fetch('http://127.0.0.1:8000/store-mg', { // Adjust the URL as necessary
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
@@ -36,7 +42,7 @@ async function saveGrammar() {
 
 async function loadText() {
     try {
-        const response = await fetch('http://127.0.0.1:8000/load', { // Adjust the URL as necessary
+        const response = await fetch('http://127.0.0.1:8000/load-mg-collection', { // Adjust the URL as necessary
             method: 'GET',
             headers: {
             'Content-Type': 'application/json',
@@ -83,7 +89,7 @@ onMounted(() => {
 
     <Button label="+" @click="visible = true" />
 
-<Dialog :visible="visible" modal header="New Grammar" :style="{ width: '25rem' }">
+<Dialog :closable="false" :visible="visible" modal header="New Grammar" :style="{ width: '25rem' }">
     <div class="flex flex-column items-center gap-4 mb-4">
         <label for="title" class="font-semibold w-24">Title</label>
         <InputText id="title" class="flex-auto" v-model="new_grammar_title" autocomplete="off" />

@@ -3,6 +3,7 @@ const getHomeViewPage = () => import('@/views/HomeView.vue')
 const getAboutViewPage = () => import('@/views/AboutView.vue')
 const getExamplesPage = () => import('@/views/ExamplesView.vue')
 const getMyGrammarsPage = () => import('@/views/MyMGsView.vue')
+const getSettingsPage = () => import('@/views/SettingsView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -25,6 +26,11 @@ const router = createRouter({
       path: '/mygrammars',
       name: 'mygrammars',
       component: getMyGrammarsPage
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: getSettingsPage
     }
   ]
 })
