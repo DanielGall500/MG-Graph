@@ -25,7 +25,7 @@ use parse::{
     grammar::Grammar,
     decomp::{Decomposer,Affix},
 };
-use data::storage::{DataManager, MGCollection};
+use data::storage::{DataManager, MGCollection, MGExample};
 
 #[derive(Deserialize)]
 struct GrammarInput {
@@ -283,21 +283,20 @@ struct SaveMGInput {
 }
 
 #[post("/store-mg")]
-async fn store_mg(data: web::Data<MGState>, input: web::Json<SaveMGInput>) -> impl Responder {
+async fn store_mg(data: web::Data<MGState>, input: web::Json<MGExample>) -> impl Responder {
 
-    let mut my_mgs: Vec<SaveMGInput>;
-    match DataManager::load_from_file::<Vec<SaveMGInput>>("saved_text.json").await {
+    let mut my_mgs: MGCollection;
+    match DataManager::load_mg_collection::<MGCollection>().await {
         Ok(data) => my_mgs = data,
         Err(e) => {
-            eprintln!("Failed to load JSON: {}", e);
-            return HttpResponse::InternalServerError().body("Failed to read or parse file on load");
+            my_mgs = MGCollection::new(); 
         }
     }
 
     my_mgs.push(input.into_inner());
 
     println!("Saving text...");
-    if let Err(e) = DataManager::save_many_to_file("saved_text.json", &*my_mgs).await {
+    if let Err(e) = DataManager::save_mg_collection(&my_mgs).await {
         eprintln!("Failed to save text: {}", e);
         return HttpResponse::InternalServerError().body("Failed to write to file");
     }

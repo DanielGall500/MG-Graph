@@ -12,10 +12,8 @@ pub struct MGExample {
     grammar: Vec<String>
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct MGCollection {
-    grammars: Vec<MGExample>
-}
+pub type MGCollection = Vec<MGExample>;
+
 pub struct DataManager;
 
 impl DataManager {
@@ -49,8 +47,8 @@ impl DataManager {
         Self::save_one_to_file(Self::SETTINGS_PATH, &settings).await
     }
 
-    pub async fn save_mg_collection<T: Serialize>(mgs: &[T]) -> std::io::Result<()> {
-        Self::save_many_to_file(Self::MG_COLLECTION_PATH, mgs).await
+    pub async fn save_mg_collection(mgs: &MGCollection) -> std::io::Result<()> {
+        Self::save_many_to_file(Self::MG_COLLECTION_PATH, &mgs).await
     }
 
     pub async fn save_one_to_file<T: Serialize>(path: &str, obj: &T) -> std::io::Result<()> {

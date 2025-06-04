@@ -37,7 +37,7 @@ async function saveGrammar() {
     } catch (error) {
         console.error('Error saving text:', error);
     }
-    loadText();
+    await loadText();
 }
 
 async function loadText() {
@@ -87,7 +87,7 @@ onMounted(() => {
             </Card>
         </div>
 
-    <Button label="+" @click="visible = true" />
+    <Button label="New MG" @click="visible = true" />
 
 <Dialog :closable="false" :visible="visible" modal header="New Grammar" :style="{ width: '25rem' }">
     <div class="flex flex-column items-center gap-4 mb-4">
