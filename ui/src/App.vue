@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import Dialog from 'primevue/dialog';
+import { ref } from 'vue';
+
+const visible = ref(false);
 </script>
 
 <template>
   <div class="flex flex-wrap">
   <Toast />
-  <div class="card flex justify-content-left">
+  <div class="sticky top-0 bg-white z-50 shadow-md card flex justify-content-left">
           <div class="flex flex-row h-full align-items-center justify-content-center">
               <div class="flex align-items-center justify-content-between px-4 pt-3 flex-shrink-0">
                   <span class="inline-flex align-items-center gap-2">
@@ -24,26 +28,26 @@
               <div class="overflow-y-auto">
                     <ul class="flex flex-row list-none p-0 m-0 overflow-hidden">
                         <li>
-                            <a href='/' v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
+                            <a href='/' v-ripple class="no-underline flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
                                 <i class="pi pi-home mr-2"></i>
                                 <span class="font-medium">Dashboard</span>
                             </a>
                         </li>
                         <li>
-                            <a v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
+                            <a href='/mygrammars' v-ripple class="no-underline flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
+                                <i class="pi pi-star mr-2"></i>
+                                <span class="font-medium">My MGs</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href='/examples' v-ripple class="no-underline flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
                                 <i class="pi pi-bookmark mr-2"></i>
                                 <span class="font-medium">Examples</span>
                             </a>
                         </li>
                         <li>
-                            <a v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
-                                <i class="pi pi-users mr-2"></i>
-                                <span class="font-medium">Saved Minimalist Grammars</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href='/about' v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
-                                <i class="pi pi-calendar mr-2"></i>
+                            <a href='/about' v-ripple class="no-underline flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
+                                <i class="pi pi-user mr-2"></i>
                                 <span class="font-medium">About</span>
                             </a>
                         </li>

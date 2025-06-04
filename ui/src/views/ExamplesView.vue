@@ -66,9 +66,9 @@ const grammars = ref([
             "",
 
             "{TP} :: v= +k TP;",                  // subject pulled up
-            "-dy :: AspP<= +k TP;",              // subject introduced. object pulled up.
-            "-ady :: AspP<= +k TP;",
-            "-yp :: AspP<= +k TP;",
+            "-dy :: AspP= +k TP;",              // subject introduced. object pulled up.
+            "-ady :: AspP= +k TP;",
+            "-yp :: AspP= +k TP;",
             "",
 
             "{AspP} :: VoiceP= AspP;",
@@ -77,8 +77,8 @@ const grammars = ref([
             "tur :: VoiceP= AspP;",              // repeated
             "",
 
-            "-yl :: vP<= VoiceP;",               // PASSIVE
-            "{VoiceP} :: vP<= VoiceP;",          // ACTIVE
+            "-yl :: vP= VoiceP;",               // PASSIVE
+            "{VoiceP} :: vP= VoiceP;",          // ACTIVE
             "",
 
             "{vP} :: VP= vP;",                   // no ext arg for passive constructions
@@ -86,6 +86,48 @@ const grammars = ref([
             "",
 
             "jaz :: d= VP;"
+        ]
+  },
+  { 
+    name: "Auxiliaries", 
+    language: "Korean", 
+    mg: 
+        [
+            "yumi :: d;",
+            "",
+
+            "usɔyo :: d= s;",
+            "usɔsɔyo :: d= s;",
+            "usəl :: v;",
+            "usgo :: GER;",
+            "",
+
+            "kɔyayo :: v= d= s;",
+            "kɔyayo :: AUX= GER= d= s;",
+            "",
+
+            "issɔyo :: GER= d= s;",
+            "isəl :: GER= AUX;"
+        ]
+  },
+  { 
+    name: "Smiling", 
+    language: "Norwegian", 
+    mg: 
+        [
+        "Jeg :: d;",
+        "",
+        "smiler :: d= s;",
+        "smilte :: d= s;",
+        "smilt :: perf;",
+        "smile :: y;",
+        "",
+        "har :: =perf d= s;",
+        "hadde :: =perf d= s;",
+        "ha :: =perf y;",
+        "",
+        "skal :: =y d= s;",
+        "vil :: =y d= s;"
         ]
   },
 ]);
@@ -96,7 +138,8 @@ const grammars = ref([
         <h2 class="font-medium">Grammar Examples</h2>
         <p class="flex-wrap font-medium m-0">
             This page contains examples of minimalist grammars.<br> 
-            The grammars are not complete and are only meant to illustrate the basic concepts of minimalist grammars.
+            The grammars are not complete and are only meant to illustrate the basic concepts of minimalist grammars.<br>
+            A special thank you to Samantha Zielinski, Mara Koshold, and Mira Ahmedovic for their contributions.
         </p>
 
         <Divider />

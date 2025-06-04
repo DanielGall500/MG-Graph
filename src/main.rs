@@ -5,6 +5,7 @@ use actix_web::{get, web, App, post,
 use actix_cors::Cors;
 use parse::parser::Parser;
 use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 use core::panic;
 use tokio::sync::Mutex;
 use std::{io, env};
@@ -12,6 +13,10 @@ use std::sync::Arc;
 use std::error::Error;
 use std::collections::HashMap;
 use dotenv::dotenv;
+
+use tokio::fs;
+use tokio::fs::OpenOptions;
+use tokio::io::AsyncWriteExt;
 
 mod calculator;
 mod cypher;
@@ -273,6 +278,70 @@ async fn pathways(data: web::Data<MGState>) -> HttpResponse {
     HttpResponse::Ok().json(response)
 }
 
+async fn save_to_file<T: Serialize>(path: &str, grammar: &[T]) -> std::io::Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(path)
+        .await?;
+
+    let json = serde_json::to_string_pretty(grammar)?;
+    println!("{}", json);
+    file.write_all(json.as_bytes()).await?;
+    file.write_all(b"\n").await?;
+
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize)]
+struct SaveMGInput {
+    title: String,
+    lang: String,
+    grammar: Vec<String>
+}
+
+#[post("/save")]
+async fn save_text(data: web::Data<MGState>, input: web::Json<SaveMGInput>) -> impl Responder {
+
+    let mut my_mgs: Vec<SaveMGInput>;
+    match load_from_file::<Vec<SaveMGInput>>("saved_text.json").await {
+        Ok(data) => my_mgs = data,
+        Err(e) => {
+            eprintln!("Failed to load JSON: {}", e);
+            return HttpResponse::InternalServerError().body("Failed to read or parse file on load");
+        }
+    }
+
+    my_mgs.push(input.into_inner());
+
+    println!("Saving text...");
+    if let Err(e) = save_to_file("saved_text.json", &*my_mgs).await {
+        eprintln!("Failed to save text: {}", e);
+        return HttpResponse::InternalServerError().body("Failed to write to file");
+    }
+    println!("Text saved.");
+    HttpResponse::Ok().body("Text saved")
+}
+
+pub async fn load_from_file<T: DeserializeOwned>(filename: &str) -> io::Result<T> {
+    let contents = fs::read_to_string(filename).await?;
+    let data = serde_json::from_str::<T>(&contents)?;
+    Ok(data)
+}
+
+#[get("/load")]
+async fn load_text() -> impl Responder {
+    match load_from_file::<Vec<SaveMGInput>>("saved_text.json").await {
+        Ok(data) => HttpResponse::Ok().json(data),
+        Err(e) => {
+            eprintln!("Failed to load JSON: {}", e);
+            HttpResponse::InternalServerError().body("Failed to read or parse file")
+        }
+    }
+}
+
+
 // note that address changes depending on the installation
 const GRAPH_DATABASE_ADDR: &str = "bolt://localhost:7687";
 const GRAPH_DATABASE_USER: &str = "neo4j";
@@ -330,6 +399,8 @@ async fn main() -> io::Result<()> {
             .service(build_initial_mg)
             .service(combine)
             .service(pathways)
+            .service(save_text)
+            .service(load_text)
     })
     .bind(("127.0.0.1", 8000))? // the actual route that it is hosted on
     .workers(2)

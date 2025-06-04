@@ -227,7 +227,7 @@ const onCombineStates = async (): Promise<string> => {
         <!-- Editor Tab -->
         <TabPanel header="Editor" :activeIndex="activeTab">
             <div class="flex justify-content-right">
-                <Card class="flex-wrap" style="width: 80rem; height: 100vh; ">
+                <Card class="flex-wrap" style="width: 80rem; height: 100vh;">
                     <template #title>Minimalist Grammar Editor</template>
                     <template #content>
                     <p class="flex-wrap m-0">
