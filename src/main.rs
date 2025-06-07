@@ -1,3 +1,4 @@
+use actix_web::body;
 // src/main.rs
 use actix_web::{get, web, App, post, 
     HttpResponse, HttpServer, Responder, 
@@ -30,12 +31,6 @@ use data::storage::{DataManager, MGCollection, MGExample, Settings};
 #[derive(Deserialize)]
 struct GrammarInput {
     grammar: String,
-}
-
-#[derive(Serialize)]
-struct GrammarSizeResponse {
-    grammar: String,
-    size: f64,
 }
 
 #[get("/health")]
@@ -91,6 +86,13 @@ async fn update_grammar_graph(data: &web::Data<MGState>) {
     let graph_guard = data.graph_db.read().await;
 
     if let Some(db) = graph_guard.as_ref() {
+        println!("There's a graph alright.");
+    }
+    else {
+        println!("Nope no graph");
+    }
+
+    if let Some(db) = graph_guard.as_ref() {
         match db.clear().await {
             Ok(()) => println!("Graph cleared."),
             Err(e) => println!("ERROR: Unable to clear graph. {}", e)
@@ -141,6 +143,12 @@ async fn request_calculate_size(data: web::Data<MGState>) -> HttpResponse {
     HttpResponse::Ok().json(response)
 }
 
+
+#[derive(Serialize)]
+struct GrammarSizeResponse {
+    grammar: String,
+    size: f64,
+}
 #[post("/build-initial-mg")]
 async fn build_initial_mg(data: web::Data<MGState>, input: web::Json<GrammarInput>) -> HttpResponse {
     let new_mg = parse_new_mg(&data, &input.grammar).await;
@@ -367,6 +375,19 @@ async fn load_settings() -> Result<Settings, Box<dyn Error>> {
     Ok(settings)
 }
 
+#[get("/get-settings")]
+async fn get_settings() -> impl Responder {
+    match load_settings().await {
+        Ok(settings) => {
+            return HttpResponse::Ok().json(settings);
+        }
+        Err(e) => {
+            eprintln!("Settings could not be loaded: {}", e);
+            return HttpResponse::InternalServerError().body("Settings could not be loaded.");
+        }
+    };
+}
+
 async fn connect_to_neo4j(data: web::Data<MGState>, db_addr: &str, db_name: &str, db_username: &str, db_pw: &str) -> Result<(), Box<dyn Error>> {
     let mut guard = data.graph_db.write().await;
     if let Some(db) = guard.as_mut() {
@@ -389,6 +410,22 @@ async fn connect_to_neo4j(data: web::Data<MGState>, db_addr: &str, db_name: &str
     Ok(())
 }
 
+#[get("/get-mg-json")]
+async fn get_mg_json(data: web::Data<MGState>) -> impl Responder {
+    let mg_parser = data.mg_parser.lock().await;
+
+    match mg_parser.from_json_raw("recent") {
+        Ok(json) => {
+            HttpResponse::Ok().body(json)
+        }
+        Err(e) => {
+            eprintln!("Unable to get current MG as JSON.");
+            HttpResponse::InternalServerError().body("Unable to retrieve MG.")
+        }
+    }
+
+}
+
 const LOCAL_BACKEND_IP: &str = "127.0.0.1";
 const LOCAL_BACKEND_PORT: u16 = 8000;
 
@@ -402,26 +439,26 @@ struct MGState {
 #[actix_web::main]
 async fn main() -> io::Result<()> {
 
-    let grammar_graph: Option<GrammarGraph> = None;
+    let mut grammar_graph: Option<GrammarGraph> = None;
     match load_settings().await {
         Ok(settings) => {
             println!("Settings loaded: {:?}", settings);
 
             /* connect to the neo4j instance */
-            let grammar_graph = match GrammarGraph::new(
+            grammar_graph = match GrammarGraph::new(
                 &settings.db_addr,
                 &settings.db_name,
                 &settings.username,
                 &settings.password
             ).await {
-                Ok(g) => g,
+                Ok(g) => Some(g),
                 Err(e) => panic!("NEO4J ERROR: {}", e),
             };
-
-            // empty the database on each reload
-            match grammar_graph.clear().await {
-                Ok(()) => println!("Graph cleared."),
-                Err(e) => println!("ERROR: Unable to clear graph. {}", e)
+            if let Some(ref g) = grammar_graph {
+                match g.clear().await {
+                    Ok(()) => println!("Graph cleared."),
+                    Err(e) => println!("ERROR: Unable to clear graph. {}", e)
+                }
             }
         }
         Err(e) => {
@@ -463,6 +500,8 @@ async fn main() -> io::Result<()> {
             .service(load_mg_collection)
             .service(store_db_auth)
             .service(test_db_auth)
+            .service(get_settings)
+            .service(get_mg_json)
     })
     .bind((LOCAL_BACKEND_IP, LOCAL_BACKEND_PORT))? // the actual route that it is hosted on
     .workers(2)

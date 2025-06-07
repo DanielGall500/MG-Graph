@@ -135,12 +135,14 @@ const grammars = ref([
 
 <template>
     <div class="examples">
-        <h2 class="font-medium">Grammar Examples</h2>
-        <p class="flex-wrap font-medium m-0">
-            This page contains examples of minimalist grammars.<br> 
-            The grammars are not complete and are only meant to illustrate the basic concepts of minimalist grammars.<br>
-            A special thank you to Samantha Zielinski, Mara Koshold, and Mira Ahmedovic for their contributions.
-        </p>
+        <Panel header="MG Examples">
+            <p class="flex-wrap font-medium m-0">
+                This page contains examples of minimalist grammars.<br> 
+                The grammars are not complete and are only meant to illustrate the basic concepts of minimalist grammars.<br>
+                A special thank you to Samantha Zielinski, Mara Koshold, and Mira Ahmedovic for their contributions.
+            </p>
+            <Divider />
+        </Panel>
 
         <Divider />
         <div class="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">

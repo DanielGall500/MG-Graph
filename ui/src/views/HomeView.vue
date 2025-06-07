@@ -19,11 +19,15 @@ const decomp_suggestions = ref();
 const loading_decomp_suggestions = ref(false);
 const state_a_combine = ref("");
 const state_b_combine = ref("");
+
+const mgAsRawJson = ref("");
+
 const toast = useToast();
 
 const all_pathways = ref("");
 const shortest_pathways = ref("");
 
+/* TODO: put these in one place */
 function showMessage(summary: string, detail: string, is_error: boolean) {
     const sev = is_error ? "error" : "success";
     toast.add({
@@ -33,6 +37,15 @@ function showMessage(summary: string, detail: string, is_error: boolean) {
         life: 3000 // Display time in milliseconds
     });
 };
+
+function showInfoMessage(summary: string, detail: string) {
+    toast.add({
+        severity: "info",  
+        summary: summary,
+        detail: detail,
+        life: 5000 // Display time in milliseconds
+    });
+}
 
 function setGrammarTextBox(grammar: string) {
     mgTextValue.value = grammar;
@@ -46,15 +59,28 @@ function setMGSize(size: number) {
     mgSize.value = size;
 }
 
-function switchTab(tab: number) {
-    activeTab.value = tab;
-}
-
 function reload() {
     graph_vis.value.reload_vis();
 }
 
+const getMGJson = async () => {
+    const response = await fetch('http://127.0.0.1:8000/get-mg-json', { // Adjust the URL as necessary
+        method: 'GET',
+        headers: {
+        'Content-Type': 'application/json',
+        },
+    });
+    if (response.ok) {
+        const data = await response.text();
+        mgAsRawJson.value = data;
+    }
+    else {
+        showMessage("Unable to Retrieve JSON", "The MG in JSON format could not be shown.", true);
+    }
+}
+
 const submitGrammar = async (): Promise<string> => {
+    showInfoMessage("Processing MG...", "This may take a minute.");
     try {
         // communicate with backend MG API
         const response = await fetch('http://127.0.0.1:8000/build-initial-mg', { // Adjust the URL as necessary
@@ -68,11 +94,13 @@ const submitGrammar = async (): Promise<string> => {
 
         // update the frontend
         clearGrammarTextBox()
-        switchTab(2);
         reload();
 
         // set the updated values for grammar
         setMGSize(data.size);
+
+        getMGJson();
+
         showMessage("Success!", "Grammar successfully submitted.", false);
         return "Success!";
     } catch (error: any) {
@@ -167,8 +195,10 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
 
         // update the frontend
         decomp_suggestions.value = [];
+
+        getMGJson();
+
         showMessage("Success!", `Decomposition of ${affix} Successful.`, false);
-        switchTab(2);
         reload();
 
         return "Success!"
@@ -207,8 +237,10 @@ const onCombineStates = async (): Promise<string> => {
 
         // update the frontend
         decomp_suggestions.value = [];
+
+        getMGJson();
+
         showMessage("Success!", `Combination Successful.`, false);
-        switchTab(2);
         reload();
 
         return "Success!"
@@ -226,12 +258,20 @@ const onCombineStates = async (): Promise<string> => {
     <TabView class="z-20" @tab-change="reload" :active-index="activeTab">
         <!-- Editor Tab -->
         <TabPanel header="Editor" :activeIndex="activeTab">
-            <div class="flex justify-content-right">
-                <Card class="flex-wrap" style="width: 80rem; height: 100vh;">
-                    <template #title>Minimalist Grammar Editor</template>
-                    <template #content>
+            <div class="flex justify-left items-start gap-4 p-3 border-round border-1 surface-border" style="justify-content: left;">
+                <div class="flex flex-column items-start gap-4 p-3 border-round border-1 surface-border">
+                    <label for="db-input" class="pb-1 mb-1 text-sm font-semibold">MG Input</label>
+                    <Textarea v-model="mgTextValue" autoResize rows="10" cols="50" />
+                        <div class="flex gap-3 mt-1" style="width: 30vw;">
+                            <Button label="Submit" class="w-full" @click="submitGrammar"/>
+                            <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
+                            <p>{{ responseNotification }}</p>
+                        </div>
+                </div>
+                <div class="text-left" style="width: 40%;">
+                    <h2>Grammar Input</h2>
                     <p class="flex-wrap m-0">
-                        Input your grammar below and submit in order to generate its di-graph representation. 
+                        Input your grammar and submit in order to generate its di-graph representation. 
                         Please use two colons to separate phonological forms from feature bundles and end each lexical item with a semi-colon.
                         For instance,
                         <br><br>
@@ -247,27 +287,25 @@ const onCombineStates = async (): Promise<string> => {
                         <br>
                         praise :: =d =d +k t;
                         <br><br>
-                        You can additionally choose the algorithm you would like to use to calculate the grammar size.
                     </p>
+                </div>
 
-                    <Divider />
 
-                    <div class="flex flex-row">
-                        <div class="">
-                        <Textarea v-model="mgTextValue" autoResize rows="10" cols="50" />
-                            <div class="flex gap-3 mt-1" style="width: 20vw;">
-                                <Button label="Submit" class="w-full" @click="submitGrammar"/>
-                                <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
-                                <p>{{ responseNotification }}</p>
-                            </div>
-                        </div>
-                        <GraphVis ref="graph_vis"/>
-                    </div>
-                    </template>
-                    <template #footer>
-                    </template>
-                </Card>
             </div>
+
+            <div class="flex flex-row gap-4 mt-5 px-4" style="justify-content: left;">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Visualisation</label>
+                    <GraphVis ref="graph_vis" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-2">MG Details</label>
+                    <label class="block text-sm font-semibold mb-2">Size: {{ Math.round(mgSize) }}</label>
+                    <Textarea v-model="mgAsRawJson" autoResize rows="30" cols="50" class="w-full" />
+                </div>
+            </div>
+
         </TabPanel>
 
         <!-- Decomposition Page-->

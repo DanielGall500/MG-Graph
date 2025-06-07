@@ -74,7 +74,7 @@ async function test_db_connection() {
         showMessage("DB Authentication Successful.", "You are ready to create MG Graphs.", false);
     }
     else {
-        showMessage("DB Authentication Failed.", "Please input your details again.", true);
+        showMessage("DB Authentication Failed.", "Make sure you've started up your Neo4J instance and that your details are correct.", true);
     }
 }
 
@@ -93,21 +93,24 @@ async function test_db_connection() {
                 <Button label="Enter Neo4J Details" @click="visible = true" />
 
                 <Dialog :closable="false" :visible="visible" modal header="Neo4J Authentication" :style="{ width: '25rem' }">
-                    <div class="flex flex-column items-center gap-4 mb-4">
+                    <div class="flex flex-column items-center gap-1 mb-4">
                         <label for="grammar" class="font-semibold w-24">Database Address</label>
+                        <p>This is the address at which your Neo4J instance is running. <br/> E.g bolt://localhost:7687</p>
                         <InputText id="new_grammar_text" v-model="db_addr" autoResize rows="10" cols="50" />
                     </div>
-                    <div class="flex flex-column items-center gap-4 mb-4">
+                    <div class="flex flex-column items-center gap-1 mb-4">
                         <label for="grammar" class="font-semibold w-24">Database Name</label>
+                        <p>E.g neo4j</p>
                         <InputText id="new_grammar_text" v-model="db_name" autoResize rows="10" cols="50" />
                     </div>
-                    <div class="flex flex-column items-center gap-4 mb-4">
+                    <div class="flex flex-column items-center gap-1 mb-4">
                         <label for="title" class="font-semibold w-24">Neo4J Username</label>
+                        <p>E.g neo4j</p>
                         <InputText id="title" class="flex-auto" v-model="db_username" autocomplete="off" />
                     </div>
                     <div class="flex flex-column gap-4 mb-4">
                         <label for="lang" class="font-semibold w-24">Neo4J Password</label>
-                        <InputText id="lang" class="flex-auto" v-model="db_password" autocomplete="off" />
+                        <Password id="pw" v-model="db_password" :feedback="false" />
                     </div>
                     <div class="flex justify-end gap-2">
                         <Button type="button" label="Cancel" severity="secondary" @click="visible = false"></Button>

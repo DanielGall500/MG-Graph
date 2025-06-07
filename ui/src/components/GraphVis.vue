@@ -1,31 +1,65 @@
 <template>
-  <div style="height: 20vh; width: 20vw;">
-    <Card :id="containerId" class="visualisation"></Card>
+  <div>
+    <Card :id="containerId" class="visualisation" style="justify-content: center"></Card>
   </div>
 </template>
 
 <script setup lang="ts">
-import {ref} from 'vue'
+import {ref, onMounted } from 'vue'
 import NeoVis from 'neovis.js/dist/neovis.js';
-
-const usernameEnvVariable = import.meta.env.VITE_NEO_USER;
-const passwordEnvVariable = import.meta.env.VITE_NEO_PW; 
+import { useToast } from 'primevue/usetoast';
 
 const containerId = "graph-vis-box";
-const serverUsername = usernameEnvVariable;
-const serverPassword = passwordEnvVariable;
-const serverURL = "bolt://localhost:7687/";
 
+const db_username = ref("");
+const db_password = ref("");
+const db_addr = ref("");
+
+const toast = useToast();
 const status = ref()
 
-function reload_vis() {
+onMounted(() => {
+    update_settings();
+});
+
+function showMessage(summary: string, detail: string, is_error: boolean) {
+    const sev = is_error ? "error" : "success";
+    toast.add({
+        severity: sev,  
+        summary: summary,
+        detail: detail,
+        life: 3000 
+    });
+};
+
+async function update_settings() {
+    const response = await fetch('http://127.0.0.1:8000/get-settings', { // Adjust the URL as necessary
+        method: 'GET',
+        headers: {
+        'Content-Type': 'application/json',
+        }
+    });
+
+    if (response.ok) {
+      const response_json = await response.json();
+      db_username.value = response_json.username;
+      db_password.value = response_json.password;
+      db_addr.value = response_json.db_addr;
+    }
+    else {
+      showMessage("Visualisation Setup Unsuccessful", "Unable to connect to Neo4J for visualisation.", false);
+    }
+}
+
+async function reload_vis() {
+  await update_settings();
   try {
     const vis = new NeoVis({
         containerId: containerId,
         neo4j: {
-            serverUrl: serverURL,
-            serverUser: serverUsername,
-            serverPassword: serverPassword
+            serverUrl: db_addr.value,
+            serverUser: db_username.value,
+            serverPassword: db_password.value,
         },
         visConfig: {
           nodes: {
@@ -68,11 +102,6 @@ function reload_vis() {
         }
     })
     vis.renderWithCypher("MATCH (n)-[r]->(m) RETURN *;")
-    vis.registerOnEvent("completed", () => {
-      console.log("Completed rendering");
-      console.log("Nodes:", vis.network.body.data.nodes);
-      console.log("Edges:", vis.network.body.data.edges);
-    });
 
   status.value = "Success"
   } catch (error) {
@@ -83,11 +112,13 @@ function reload_vis() {
 defineExpose({
   reload_vis
 });
+
+
 </script>
 
 <style scoped>
 .visualisation {
-  width: 900px;
+  width: 700px;
   height: 700px;
   font: 22pt arial;
 }

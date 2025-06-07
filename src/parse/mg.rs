@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 use std::io::{BufReader, Write};
 use std::collections::HashSet;
 use std::error::Error;
-use std::fs::File;
+use std::fs::{File, read_to_string};
 use std::fmt;
 
 
@@ -81,6 +81,13 @@ impl MG {
         let config: Vec<LexicalItem> = serde_json::from_reader(reader)?;
         Ok(config)
     }
+
+    pub fn from_json_raw(&self, title: &str) -> Result<String, Box<dyn Error>> {
+        let path = format!("./parse/grammar_parsed_{}.json", title);
+        let json_str = read_to_string(path)?; // reads the raw JSON as text
+        Ok(json_str)
+    }
+
 }
 
 impl fmt::Display for MG {

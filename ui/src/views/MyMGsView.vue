@@ -68,7 +68,14 @@ onMounted(() => {
 
 <template>
     <div class="examples">
-        <h2 class="font-medium">My Grammars</h2>
+
+        <Panel header="My MGs">
+            <p class="flex-wrap font-medium m-0">
+                This page contains your very own MGs which you can create and save.<br> 
+                They will be stored on your device and you can access them at any time.
+            </p>
+            <Divider />
+        </Panel>
 
         <div class="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card v-for="(grammar, index) in grammars" :key="index" 
