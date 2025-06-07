@@ -14,12 +14,12 @@ pub struct MGExample {
 
 pub type MGCollection = Vec<MGExample>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Settings {
+    pub db_addr: String,
+    pub db_name: String,
     pub username: String,
     pub password: String,
-    pub db_name: String,
-    pub db_port: String
 }
 
 pub struct DataManager;

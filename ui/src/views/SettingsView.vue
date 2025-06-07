@@ -5,10 +5,11 @@ import Panel from 'primevue/panel';
 
 const visible = ref(false);
 
-const db_port = ref("");
+const db_addr = ref("");
 const db_name = ref("");
 const db_username = ref("");
 const db_password = ref("");
+
 const db_auth_stored = ref("");
 const valid_connection = ref("");
 const toast = useToast();
@@ -19,7 +20,7 @@ function showMessage(summary: string, detail: string, is_error: boolean) {
         severity: sev,  
         summary: summary,
         detail: detail,
-        life: 3000 
+        life: 5000 
     });
 };
 
@@ -37,14 +38,14 @@ async function save_db_auth_details() {
     const response = await fetch('http://127.0.0.1:8000/store-db-auth', { // Adjust the URL as necessary
         method: 'POST',
         headers: {
-        'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-            username: db_port.value,
-            password: db_name.value,
-            db_name: db_username.value,
-            db_port: db_password.value
-            }), 
+            db_addr: db_addr.value,
+            db_name: db_name.value,
+            username: db_username.value,
+            password: db_password.value,
+        }), 
     });
 
     if (response.ok) {
@@ -93,20 +94,20 @@ async function test_db_connection() {
 
                 <Dialog :closable="false" :visible="visible" modal header="Neo4J Authentication" :style="{ width: '25rem' }">
                     <div class="flex flex-column items-center gap-4 mb-4">
-                        <label for="title" class="font-semibold w-24">Neo4J Username</label>
-                        <InputText id="title" class="flex-auto" v-model="db_username" autocomplete="off" />
-                    </div>
-                    <div class="flex flex-column gap-4 mb-4">
-                        <label for="lang" class="font-semibold w-24">Neo4J Password</label>
-                        <InputText id="lang" class="flex-auto" v-model="db_password" autocomplete="off" />
+                        <label for="grammar" class="font-semibold w-24">Database Address</label>
+                        <InputText id="new_grammar_text" v-model="db_addr" autoResize rows="10" cols="50" />
                     </div>
                     <div class="flex flex-column items-center gap-4 mb-4">
                         <label for="grammar" class="font-semibold w-24">Database Name</label>
                         <InputText id="new_grammar_text" v-model="db_name" autoResize rows="10" cols="50" />
                     </div>
                     <div class="flex flex-column items-center gap-4 mb-4">
-                        <label for="grammar" class="font-semibold w-24">Port</label>
-                        <InputText id="new_grammar_text" v-model="db_port" autoResize rows="10" cols="50" />
+                        <label for="title" class="font-semibold w-24">Neo4J Username</label>
+                        <InputText id="title" class="flex-auto" v-model="db_username" autocomplete="off" />
+                    </div>
+                    <div class="flex flex-column gap-4 mb-4">
+                        <label for="lang" class="font-semibold w-24">Neo4J Password</label>
+                        <InputText id="lang" class="flex-auto" v-model="db_password" autocomplete="off" />
                     </div>
                     <div class="flex justify-end gap-2">
                         <Button type="button" label="Cancel" severity="secondary" @click="visible = false"></Button>
@@ -116,6 +117,13 @@ async function test_db_connection() {
 
                 <Button label="Test Connection" @click="test_db_connection" />
             </div>
+        </Panel>
+
+        <Panel header="Local Server Setup">
+            <p class="m-0">
+                A local server is required in order to run the backend.<br> 
+            </p>
+            <Divider />
         </Panel>
 
     </div>

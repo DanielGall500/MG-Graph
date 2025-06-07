@@ -10,45 +10,47 @@ pub struct GeneralGraph {
 }
 
 impl GeneralGraph {
-    pub async fn new(db_id: &str, username: &str, password: &str) -> Result<Self, Box<dyn Error>> {
+    /* TODO: Make only one config. */
+    pub async fn new(db_addr: &str, db_name: &str, username: &str, password: &str) -> Result<Self, Box<dyn Error>> {
         let queries = CQueryStorage::new();
 
         let config = ConfigBuilder::default()
-            .uri(db_id)
+            .uri(db_addr)
             .user(username)
             .password(password)
-            .db("neo4j")
+            .db(db_name)
             .fetch_size(500)
             .max_connections(10)
             .build()?; // propagate build error
 
         let graph = Graph::connect(config).await?; // propagate connection error
-
-        println!("{}", username);
-        println!("{}", password);
-        println!("Connected to database.");
 
         Ok(Self{ graph, queries })
     }
 
-    pub async fn connect(&mut self, db_id: &str, username: &str, password: &str) -> Result<(), Box<dyn Error>> {
+    pub async fn connect(&mut self, db_addr: &str, db_name: &str, username: &str, password: &str) -> Result<(), Box<dyn Error>> {
         let config = ConfigBuilder::default()
-            .uri(db_id)
+            .uri(db_addr)
             .user(username)
             .password(password)
-            .db("neo4j")
+            .db(db_name)
             .fetch_size(500)
             .max_connections(10)
             .build()?; // propagate build error
 
         let graph = Graph::connect(config).await?; // propagate connection error
 
-        // Force the driver to actually connect, authenticate, and validate session
-        let mut result = graph.execute(query("RETURN 1")).await?;
-        while let Ok(Some(_)) = result.next().await {}
+        self.test_connection();
 
         self.graph = graph;
 
+        Ok(())
+    }
+
+    pub async fn test_connection(&mut self) -> Result<(), Box<dyn Error>> {
+        // force driver to actually connect, authenticate, and validate session
+        let mut result = self.graph.execute(query("RETURN 1")).await?;
+        while let Ok(Some(_)) = result.next().await {}
         Ok(())
     }
 
@@ -181,16 +183,21 @@ pub struct GrammarGraph {
 
 impl GrammarGraph {
     pub async fn new(
-        db_id: &str, 
+        db_addr: &str, 
+        db_name: &str, 
         username: &str, 
         password: &str
     ) -> Result<Self, Box<dyn Error>> {
-        let base = GeneralGraph::new(db_id, username, password).await?;
+        let base = GeneralGraph::new(db_addr, db_name, username, password).await?;
         Ok(Self { base })
     }
 
-    pub async fn connect(&mut self, db_id: &str, db_user: &str, db_pw: &str) -> Result<(), Box<dyn Error>>{
-        self.base.connect(db_id, db_user, db_pw).await
+    pub async fn connect(&mut self, db_addr: &str, db_name: &str, db_user: &str, db_pw: &str) -> Result<(), Box<dyn Error>>{
+        self.base.connect(db_addr, db_name, db_user, db_pw).await
+    }
+
+    pub async fn test_connection(&mut self) -> Result<(), Box<dyn Error>>{
+        self.base.test_connection().await
     }
 
     pub async fn set_state_property(&self, label_id: &str, label_val: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{

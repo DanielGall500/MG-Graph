@@ -85,31 +85,34 @@ async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec
     Ok(mg_parser.get_grammar().clone())
 }
 
+/* Improve safety here. No return. */
 async fn update_grammar_graph(data: &web::Data<MGState>) {
     println!("Updating Grammar Graph");
-    let db = data.graph_db.read().await;
+    let graph_guard = data.graph_db.read().await;
 
-    match db.clear().await {
-        Ok(()) => println!("Graph cleared."),
-        Err(e) => println!("ERROR: Unable to clear graph. {}", e)
-    }
-
-    // below brackets for sync code only?
-    {
-        let mut mg_parser = data.mg_parser.lock().await;
-        let lis = mg_parser.get_grammar();
-
-        println!("LIs in grammar to be passed to graph:");
-        for li in lis.iter() {
-            println!("{}", li.morph);
+    if let Some(db) = graph_guard.as_ref() {
+        match db.clear().await {
+            Ok(()) => println!("Graph cleared."),
+            Err(e) => println!("ERROR: Unable to clear graph. {}", e)
         }
 
+        // below brackets for sync code only?
+        {
+            let mut mg_parser = data.mg_parser.lock().await;
+            let lis = mg_parser.get_grammar();
 
-        match Parser::convert_stored_to_graph(&mut mg_parser, &*db).await {
-            Ok(g) => println!("Graph updated successfully."),
-            Err(e) => println!("Problem updating graph: {}", e)
-        }
+            println!("LIs in grammar to be passed to graph:");
+            for li in lis.iter() {
+                println!("{}", li.morph);
+            }
+
+
+            match Parser::convert_stored_to_graph(&mut mg_parser, &*db).await {
+                Ok(g) => println!("Graph updated successfully."),
+                Err(e) => println!("Problem updating graph: {}", e)
+            }
     
+        }
     }
 }
 
@@ -257,15 +260,25 @@ struct PathwayResponse {
 }
 #[get("/pathways")]
 async fn pathways(data: web::Data<MGState>) -> HttpResponse {
-    let graph = data.graph_db.read().await;
+    let graph_guard = data.graph_db.read().await;
 
-    let poss_paths = graph.get_possible_paths().await.unwrap();
-    let shortest_paths = graph.get_shortest_paths().await.unwrap();
-    let response: PathwayResponse = PathwayResponse {
-        all_pathways: poss_paths,
-        shortest_pathways: shortest_paths,
-    };
-    HttpResponse::Ok().json(response)
+    if let Some(graph) = graph_guard.as_ref() {
+        let poss_paths = graph.get_possible_paths().await.unwrap();
+        let shortest_paths = graph.get_shortest_paths().await.unwrap();
+        let response: PathwayResponse = PathwayResponse {
+            all_pathways: poss_paths,
+            shortest_pathways: shortest_paths,
+        };
+        HttpResponse::Ok().json(response)
+    }
+    else {
+        let response: PathwayResponse = PathwayResponse {
+            all_pathways: Vec::new(),
+            shortest_pathways: Vec::new(),
+        };
+        HttpResponse::InternalServerError().json(response)
+    }
+
 }
 
 #[derive(Serialize, Deserialize)]
@@ -299,17 +312,17 @@ async fn store_mg(data: web::Data<MGState>, input: web::Json<MGExample>) -> impl
 
 #[derive(Serialize, Deserialize)]
 struct DBAuth {
+    db_addr: String,
+    db_name: String,
     username: String,
     password: String,
-    db_name: String,
-    db_port: String
 }
 #[post("/store-db-auth")]
 async fn store_db_auth(data: web::Data<MGState>, db_auth: web::Json<DBAuth>) -> impl Responder {
 
     if let Err(e) = DataManager::save_settings(&db_auth).await {
         eprintln!("Failed to save text: {}", e);
-        return HttpResponse::Ok().body("Database authentication details unable to be stored.");
+        return HttpResponse::InternalServerError().body("Database authentication details unable to be stored.");
     }
 
     HttpResponse::Ok().body("Database authentication details stored.")
@@ -339,51 +352,82 @@ async fn test_db_auth(data: web::Data<MGState>) -> impl Responder {
         }
     }
 
-    let mut db = data.graph_db.write().await;
-
-    match db.connect(settings.db_name.as_str(), settings.username.as_str(), settings.password.as_str()).await {
-        Ok(()) => println!("Successfully connected."),
-        Err(e) => {
-            eprintln!("DB Auth Failed: {}", e);
-            return HttpResponse::InternalServerError().body("Neo4J Database Authentication has failed.");
-        }
+    if let Err(e) = connect_to_neo4j(data, settings.db_addr.as_str(), 
+    &settings.db_name.as_str(), 
+    settings.username.as_str(), 
+    settings.password.as_str()).await {
+            eprintln!("Unable to establish a connection: {}", e);
+            return HttpResponse::InternalServerError().body("Unable to establish connection.");
     }
     HttpResponse::Ok().body("Connected")
 }
 
-// note that address changes depending on the installation
-const GRAPH_DATABASE_ADDR: &str = "bolt://localhost:7687";
-const GRAPH_DATABASE_USER: &str = "neo4j";
+async fn load_settings() -> Result<Settings, Box<dyn Error>> {
+    let settings =  DataManager::load_settings::<Settings>().await?;
+    Ok(settings)
+}
+
+async fn connect_to_neo4j(data: web::Data<MGState>, db_addr: &str, db_name: &str, db_username: &str, db_pw: &str) -> Result<(), Box<dyn Error>> {
+    let mut guard = data.graph_db.write().await;
+    if let Some(db) = guard.as_mut() {
+        match db.connect(db_addr, db_name, db_username, db_pw).await {
+            Ok(()) => println!("Successfully connected."),
+            Err(e) => {
+                eprintln!("DB Auth Failed: {}", e);
+                return Err(e);
+            }
+        }
+    }
+    else {
+        let mut new_graph_db = GrammarGraph::new(db_addr, 
+            db_name, 
+            db_username, 
+            db_pw).await?;
+        new_graph_db.test_connection().await?;
+    }
+
+    Ok(())
+}
+
+const LOCAL_BACKEND_IP: &str = "127.0.0.1";
+const LOCAL_BACKEND_PORT: u16 = 8000;
 
 struct MGState {
     mg: Mutex<Vec<LexicalItem>>,
     mg_parser: Mutex<MG>,
-    graph_db: RwLock<GrammarGraph>,
+    graph_db: RwLock<Option<GrammarGraph>>,
     decomposer: Mutex<Decomposer>
 }
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
 
-    /* a neo4j instance password must be set in an env file */
-    dotenv().ok();
-    let secret_key = env::var("PASSWORD")
-        .expect("The database password must be set in a .env file.");
+    let grammar_graph: Option<GrammarGraph> = None;
+    match load_settings().await {
+        Ok(settings) => {
+            println!("Settings loaded: {:?}", settings);
 
-    /* connect to the neo4j instance */
-    let grammar_graph = match GrammarGraph::new(
-        GRAPH_DATABASE_ADDR,
-        GRAPH_DATABASE_USER,
-        secret_key.as_str(),
-    ).await {
-        Ok(g) => g,
-        Err(e) => panic!("NEO4J ERROR: {}", e),
-    };
+            /* connect to the neo4j instance */
+            let grammar_graph = match GrammarGraph::new(
+                &settings.db_addr,
+                &settings.db_name,
+                &settings.username,
+                &settings.password
+            ).await {
+                Ok(g) => g,
+                Err(e) => panic!("NEO4J ERROR: {}", e),
+            };
 
-    // empty the database on each reload
-    match grammar_graph.clear().await {
-        Ok(()) => println!("Graph cleared."),
-        Err(e) => println!("ERROR: Unable to clear graph. {}", e)
+            // empty the database on each reload
+            match grammar_graph.clear().await {
+                Ok(()) => println!("Graph cleared."),
+                Err(e) => println!("ERROR: Unable to clear graph. {}", e)
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to load settings: {}", e);
+            // Handle the error (retry, fallback, etc.)
+        }
     }
 
     let mg_state = web::Data::new(
@@ -420,7 +464,7 @@ async fn main() -> io::Result<()> {
             .service(store_db_auth)
             .service(test_db_auth)
     })
-    .bind(("127.0.0.1", 8000))? // the actual route that it is hosted on
+    .bind((LOCAL_BACKEND_IP, LOCAL_BACKEND_PORT))? // the actual route that it is hosted on
     .workers(2)
     .run()
     .await
