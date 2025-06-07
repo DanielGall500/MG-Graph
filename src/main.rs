@@ -1,4 +1,3 @@
-use actix_web::body;
 // src/main.rs
 use actix_web::{get, web, App, post, 
     HttpResponse, HttpServer, Responder, 
@@ -7,10 +6,9 @@ use actix_cors::Cors;
 use parse::parser::Parser;
 use serde::{Deserialize, Serialize};
 use core::panic;
-use std::{io, env};
+use std::{io};
 use std::error::Error;
 use std::collections::HashMap;
-use dotenv::dotenv;
 
 use tokio::sync::{Mutex, RwLock};
 

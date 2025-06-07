@@ -151,9 +151,9 @@ const get_pathways = async(): Promise<string> => {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
-        const responseText = await response.text(); // Get the raw response text
-        if (responseText) {
-            const data = JSON.parse(responseText); // Parse it manually
+        const data = await response.json(); // Get the raw response text
+        if (response.ok && data) {
+            // const data = JSON.parse(responseText); // Parse it manually
             all_pathways.value = data.all_pathways;
             shortest_pathways.value = data.shortest_pathways;
             showMessage("Pathways Found!", "Pathways successfully found.", false);
@@ -371,13 +371,6 @@ const onCombineStates = async (): Promise<string> => {
                     </template>
                 </Card>
             </div>
-        </TabPanel>
-
-        <!-- Visualisation Tab -->
-        <TabPanel header="Visualisation" :activeIndex="activeTab">
-            <h1>MG-Graph Visualisation</h1>
-            <h2>Size: {{  Math.round(mgSize)  }}</h2>
-            <GraphVis ref="graph_vis"/>
         </TabPanel>
 
         <!--- Pathways Tab --->

@@ -47,7 +47,7 @@
         },
     "get_shortest_paths": {
           "name": "Get Shortest Possible Pathways",
-          "query": "MATCH p = ALL SHORTEST (start {name: \"d\"})-[*]->(end {name: \"t\"}) RETURN  [n IN nodes(p) | n.name] AS states, [r IN relationships(p) | r.li] AS items;",
+          "query": "MATCH (start {name: \"d\"}), (end {name: \"t\"}) MATCH p = allShortestPaths((start)-[*]->(end)) RETURN [n IN nodes(p) | n.name] AS states, [r IN relationships(p) | r.li] AS items",
           "desc": "Find all pathways from a start state to an end state, broken into states and merges."
       }
     }
