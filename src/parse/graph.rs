@@ -1,18 +1,28 @@
-use neo4rs::{query, Graph};
+use neo4rs::{query, Graph, Config, ConfigBuilder};
 use serde_json::Value;
 use std::{collections::HashMap, error::Error};
 use crate::cypher::cquery::CQueryStorage;
 
 #[derive(Clone)]
 pub struct GeneralGraph {
-    graph: Graph,
-    queries: CQueryStorage
+    pub graph: Graph,
+    pub queries: CQueryStorage
 }
 
 impl GeneralGraph {
     pub async fn new(db_id: &str, username: &str, password: &str) -> Result<Self, Box<dyn Error>> {
-        let graph = Graph::new(db_id, username, password).await?;
         let queries = CQueryStorage::new();
+
+        let config = ConfigBuilder::default()
+            .uri(db_id)
+            .user(username)
+            .password(password)
+            .db("neo4j")
+            .fetch_size(500)
+            .max_connections(10)
+            .build()?; // propagate build error
+
+        let graph = Graph::connect(config).await?; // propagate connection error
 
         println!("{}", username);
         println!("{}", password);
@@ -20,6 +30,28 @@ impl GeneralGraph {
 
         Ok(Self{ graph, queries })
     }
+
+    pub async fn connect(&mut self, db_id: &str, username: &str, password: &str) -> Result<(), Box<dyn Error>> {
+        let config = ConfigBuilder::default()
+            .uri(db_id)
+            .user(username)
+            .password(password)
+            .db("neo4j")
+            .fetch_size(500)
+            .max_connections(10)
+            .build()?; // propagate build error
+
+        let graph = Graph::connect(config).await?; // propagate connection error
+
+        // Force the driver to actually connect, authenticate, and validate session
+        let mut result = graph.execute(query("RETURN 1")).await?;
+        while let Ok(Some(_)) = result.next().await {}
+
+        self.graph = graph;
+
+        Ok(())
+    }
+
 
     pub async fn run(&self, q: &str) -> Result<(), neo4rs::Error> {
         println!("About to run: {}", q);
@@ -144,7 +176,7 @@ pub struct Edge<'a> {
 
 #[derive(Clone)]
 pub struct GrammarGraph {
-    base: GeneralGraph,
+    pub base: GeneralGraph,
 }
 
 impl GrammarGraph {
@@ -155,6 +187,10 @@ impl GrammarGraph {
     ) -> Result<Self, Box<dyn Error>> {
         let base = GeneralGraph::new(db_id, username, password).await?;
         Ok(Self { base })
+    }
+
+    pub async fn connect(&mut self, db_id: &str, db_user: &str, db_pw: &str) -> Result<(), Box<dyn Error>>{
+        self.base.connect(db_id, db_user, db_pw).await
     }
 
     pub async fn set_state_property(&self, label_id: &str, label_val: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{

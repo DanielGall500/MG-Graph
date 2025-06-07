@@ -6,12 +6,12 @@ use actix_cors::Cors;
 use parse::parser::Parser;
 use serde::{Deserialize, Serialize};
 use core::panic;
-use tokio::sync::Mutex;
 use std::{io, env};
-use std::sync::Arc;
 use std::error::Error;
 use std::collections::HashMap;
 use dotenv::dotenv;
+
+use tokio::sync::{Mutex, RwLock};
 
 mod calculator;
 mod cypher;
@@ -25,7 +25,7 @@ use parse::{
     grammar::Grammar,
     decomp::{Decomposer,Affix},
 };
-use data::storage::{DataManager, MGCollection, MGExample};
+use data::storage::{DataManager, MGCollection, MGExample, Settings};
 
 #[derive(Deserialize)]
 struct GrammarInput {
@@ -41,13 +41,6 @@ struct GrammarSizeResponse {
 #[get("/health")]
 async fn health_check() -> impl Responder {
     "Service is up and running!"
-}
-
-struct MGState {
-    mg: Mutex<Vec<LexicalItem>>,
-    mg_parser: Mutex<MG>,
-    graph_db: Arc<GrammarGraph>,
-    decomposer: Mutex<Decomposer>
 }
 
 async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) {
@@ -94,13 +87,14 @@ async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec
 
 async fn update_grammar_graph(data: &web::Data<MGState>) {
     println!("Updating Grammar Graph");
-    let db = &data.graph_db;
+    let db = data.graph_db.read().await;
 
     match db.clear().await {
         Ok(()) => println!("Graph cleared."),
         Err(e) => println!("ERROR: Unable to clear graph. {}", e)
     }
 
+    // below brackets for sync code only?
     {
         let mut mg_parser = data.mg_parser.lock().await;
         let lis = mg_parser.get_grammar();
@@ -111,7 +105,7 @@ async fn update_grammar_graph(data: &web::Data<MGState>) {
         }
 
 
-        match Parser::convert_stored_to_graph(&mut mg_parser, db).await {
+        match Parser::convert_stored_to_graph(&mut mg_parser, &*db).await {
             Ok(g) => println!("Graph updated successfully."),
             Err(e) => println!("Problem updating graph: {}", e)
         }
@@ -231,10 +225,8 @@ struct DecomposeSuggestionResponse {
 }
 #[get("/decompose-suggestions")]
 async fn get_decompose_suggestions(data: web::Data<MGState>) -> HttpResponse {
-    let mut mg_state = data.mg.lock().await;
+    let mg_state = data.mg.lock().await;
 
-    let mut mg_parser = data.mg_parser.lock().await;
-    let graph = &data.graph_db;
     // let mut graph = data.graph.lock().await;
     let mut decomposer = data.decomposer.lock().await;
 
@@ -265,7 +257,8 @@ struct PathwayResponse {
 }
 #[get("/pathways")]
 async fn pathways(data: web::Data<MGState>) -> HttpResponse {
-    let graph = &data.graph_db;
+    let graph = data.graph_db.read().await;
+
     let poss_paths = graph.get_possible_paths().await.unwrap();
     let shortest_paths = graph.get_shortest_paths().await.unwrap();
     let response: PathwayResponse = PathwayResponse {
@@ -333,10 +326,41 @@ async fn load_mg_collection() -> impl Responder {
     }
 }
 
+#[get("/test-db-auth")]
+async fn test_db_auth(data: web::Data<MGState>) -> impl Responder {
+    let settings: Settings;
+    match DataManager::load_settings::<Settings>().await {
+        Ok(data) => {
+            settings = data;
+        }
+        Err(e) => {
+            eprintln!("Unable to load settings: {}", e);
+            return HttpResponse::InternalServerError().body("Unable to access settings.")
+        }
+    }
+
+    let mut db = data.graph_db.write().await;
+
+    match db.connect(settings.db_name.as_str(), settings.username.as_str(), settings.password.as_str()).await {
+        Ok(()) => println!("Successfully connected."),
+        Err(e) => {
+            eprintln!("DB Auth Failed: {}", e);
+            return HttpResponse::InternalServerError().body("Neo4J Database Authentication has failed.");
+        }
+    }
+    HttpResponse::Ok().body("Connected")
+}
 
 // note that address changes depending on the installation
 const GRAPH_DATABASE_ADDR: &str = "bolt://localhost:7687";
 const GRAPH_DATABASE_USER: &str = "neo4j";
+
+struct MGState {
+    mg: Mutex<Vec<LexicalItem>>,
+    mg_parser: Mutex<MG>,
+    graph_db: RwLock<GrammarGraph>,
+    decomposer: Mutex<Decomposer>
+}
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -366,7 +390,7 @@ async fn main() -> io::Result<()> {
         MGState {
         mg: Mutex::new(Vec::new()),
         mg_parser: Mutex::new(MG::new()),
-        graph_db: Arc::new(grammar_graph),
+        graph_db: RwLock::new(grammar_graph),
         decomposer: Mutex::new(Decomposer::new()),
     });
 
@@ -394,6 +418,7 @@ async fn main() -> io::Result<()> {
             .service(store_mg)
             .service(load_mg_collection)
             .service(store_db_auth)
+            .service(test_db_auth)
     })
     .bind(("127.0.0.1", 8000))? // the actual route that it is hosted on
     .workers(2)

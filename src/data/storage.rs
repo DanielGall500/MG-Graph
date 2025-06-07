@@ -7,12 +7,20 @@ use serde_json::{Value, json};
 
 #[derive(Serialize, Deserialize)]
 pub struct MGExample {
-    title: String,
-    lang: String,
-    grammar: Vec<String>
+    pub title: String,
+    pub lang: String,
+    pub grammar: Vec<String>
 }
 
 pub type MGCollection = Vec<MGExample>;
+
+#[derive(Serialize, Deserialize)]
+pub struct Settings {
+    pub username: String,
+    pub password: String,
+    pub db_name: String,
+    pub db_port: String
+}
 
 pub struct DataManager;
 
