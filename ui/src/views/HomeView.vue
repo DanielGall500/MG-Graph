@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import GraphVis from '@/components/GraphVis.vue'
+import GraphVis from '@/components/GraphVis.vue';
 import { useToast } from 'primevue/usetoast';
 import { Form } from '@primevue/forms';
 

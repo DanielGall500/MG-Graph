@@ -6,7 +6,7 @@
 
 <script setup lang="ts">
 import {ref, onMounted } from 'vue'
-import NeoVis from 'neovis.js/dist/neovis.js';
+import NeoVis from 'neovis.js';
 import { useToast } from 'primevue/usetoast';
 
 const containerId = "graph-vis-box";
@@ -47,7 +47,7 @@ async function update_settings() {
       db_addr.value = response_json.db_addr;
     }
     else {
-      showMessage("Visualisation Setup Unsuccessful", "Unable to connect to Neo4J for visualisation.", false);
+      showMessage("Visualisation Setup Unsuccessful", "Unable to connect to Neo4J for visualisation.", true);
     }
 }
 
