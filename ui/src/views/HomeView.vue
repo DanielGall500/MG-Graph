@@ -99,6 +99,8 @@ const submitGrammar = async (): Promise<string> => {
         // set the updated values for grammar
         setMGSize(data.size);
 
+        get_pathways();
+
         getMGJson();
 
         showMessage("Success!", "Grammar successfully submitted.", false);
@@ -293,19 +295,43 @@ const onCombineStates = async (): Promise<string> => {
 
             </div>
 
-            <div class="flex flex-row gap-4 mt-5 px-4" style="justify-content: left;">
-                <div>
-                    <label class="block text-sm font-semibold mb-2">Visualisation</label>
-                    <GraphVis ref="graph_vis" />
+            <div class="flex flex-column">
+                <div class="flex flex-row gap-4 mt-5 px-4" style="justify-content: left;">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Visualisation</label>
+                        <GraphVis ref="graph_vis" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">MG Details</label>
+                        <label class="block text-sm font-semibold mb-2">Size: {{ Math.round(mgSize) }}</label>
+                        <Textarea v-model="mgAsRawJson" rows="30" cols="50" class="w-full" style="resize: none;" />
+                    </div>
+
                 </div>
 
-                <div>
-                    <label class="block text-sm font-semibold mb-2">MG Details</label>
-                    <label class="block text-sm font-semibold mb-2">Size: {{ Math.round(mgSize) }}</label>
-                    <Textarea v-model="mgAsRawJson" autoResize rows="30" cols="50" class="w-full" />
-                </div>
+                <Panel class="flex flex-column gap-4 mt-5 px-4" style="padding-top: 5%;">
+                    <div>
+                        <h2>All Pathways</h2>
+                        <ul>
+                            <li v-for="(item, index) in all_pathways" :key="index">
+                                {{ item }}
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h2>Shortest Pathways</h2>
+                        <ul>
+                            <li v-for="(item, index) in shortest_pathways" :key="index">
+                                {{ item }}
+                            </li>
+                        </ul>
+                    </div>
+                </Panel>
             </div>
 
+
+        
         </TabPanel>
 
         <!-- Decomposition Page-->
@@ -373,29 +399,6 @@ const onCombineStates = async (): Promise<string> => {
             </div>
         </TabPanel>
 
-        <!--- Pathways Tab --->
-        <TabPanel header="Pathways" :activeIndex="activeTab">
-          <h1>View Potential Routes</h1>
-          <div class="flex gap-3 mt-1" style="width: 30em;">
-            <Button label="Calculate Potential Routes" class="w-full" @click="get_pathways"/>
-          </div>
-          <div>
-            <h2>All Pathways</h2>
-            <ul>
-                <li v-for="(item, index) in all_pathways" :key="index">
-                    {{ item }}
-                </li>
-            </ul>
-        </div>
-          <div>
-            <h2>Shortest Pathways</h2>
-            <ul>
-                <li v-for="(item, index) in shortest_pathways" :key="index">
-                    {{ item }}
-                </li>
-            </ul>
-        </div>
-        </TabPanel>
     </TabView>
 
     </div>

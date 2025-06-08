@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue";
 import Card from 'primevue/card';
 import Dialog from "primevue/dialog";
+import { useToast } from 'primevue/usetoast';
 
 interface MGExample {
   title: string;
@@ -14,30 +15,73 @@ const new_grammar_title = ref("");
 const new_grammar_lang = ref("");
 const new_grammar_text = ref("");
 const visible = ref(false);
+const toast = useToast();
+
+function showMessage(summary: string, detail: string, is_error: boolean) {
+    const sev = is_error ? "error" : "success";
+    toast.add({
+        severity: sev,  
+        summary: summary,
+        detail: detail,
+        life: 3000 // Display time in milliseconds
+    });
+};
+
+function showInfoMessage(summary: string, detail: string) {
+    toast.add({
+        severity: "info",  
+        summary: summary,
+        detail: detail,
+        life: 5000 // Display time in milliseconds
+    });
+}
+
+const is_valid_mg = (mg: string): boolean => {
+    return mg
+    .split(";")
+    .filter(lexical_item => lexical_item.length > 1)
+    .every(lexical_item => lexical_item.includes("::"));
+}
+
+function parse_saved_mg(mg: string) {
+    return mg
+    .split(";")
+    .map(
+        item => item.trim().concat(";")
+    )
+    .filter(lexical_item => lexical_item.length > 1)
+}
 
 async function saveGrammar() {
     visible.value = false;
-    try {
-        const new_grammar_as_list = new_grammar_text.value.split(";").map(item => item.trim());
-
-        const response = await fetch('http://127.0.0.1:8000/store-mg', { // Adjust the URL as necessary
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                title: new_grammar_title.value,
-                lang: new_grammar_lang.value,
-                grammar: new_grammar_as_list
-             }), 
-        });
-
-        const result = await response.text();
-        console.log('Server response:', result);
-    } catch (error) {
-        console.error('Error saving text:', error);
+    const mg = new_grammar_text.value;
+    if (!is_valid_mg(mg)) {
+        showMessage("MG Invalid", "Please check your syntax.", true);
     }
-    await loadText();
+    else {
+        const new_grammar_as_list = parse_saved_mg(new_grammar_text.value);
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/store-mg', { // Adjust the URL as necessary
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    title: new_grammar_title.value,
+                    lang: new_grammar_lang.value,
+                    grammar: new_grammar_as_list
+                }), 
+            });
+
+            const result = await response.text();
+            await loadText();
+            showMessage("MG Added", "Your MG has been saved.", false);
+        }
+        catch (error) {
+            showMessage("MG Couldn't Be Stored", "There appears to be a local server issue.", true);
+        }
+    }
 }
 
 async function loadText() {
