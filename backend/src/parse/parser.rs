@@ -4,7 +4,40 @@ use crate::parse::mg::LIRelation;
 use crate::parse::mg::Feature;
 use crate::parse::mg::LexicalItem;
 use crate::parse::mg::State;
+use std::collections::HashMap;
 use std::error::Error;
+use crate::cypher::cquery::{Node, Relationship};
+
+pub fn get_node(label: String, state_type: String) -> Node {
+    let mut basic_node_props : HashMap<String, String> = HashMap::new();
+    basic_node_props.insert(String::from("move"), String::from(""));
+    Node {
+        state_type: state_type,
+        label: label,
+        props: Some(basic_node_props)
+    }
+}
+
+pub fn get_default_node(label: String) -> Node {
+    let state_type = String::from("State");
+    get_node(label, state_type)
+}
+
+pub fn get_intermediate_node(label: String) -> Node {
+    let state_type = String::from("Interm");
+    get_node(label, state_type)
+}
+
+pub fn get_default_relationship(node_a: Node, node_b: Node, li: String) -> Relationship {
+    let mut basic_rel_props : HashMap<String, String> = HashMap::new();
+    basic_rel_props.insert(String::from("move"), String::from(""));
+    Relationship {
+        node_a,
+        node_b,
+        li,
+        props: basic_rel_props
+    }
+}
 
 pub struct Parser {}
 
@@ -16,7 +49,6 @@ impl Parser {
 
         let mg_statements = minimalist_grammar
             .split(";")
-            .into_iter()
             .filter(|l| { !l.is_empty() });
 
         for l in mg_statements {
@@ -59,13 +91,13 @@ impl Parser {
 
                 // STEP 3: iterate over each feature in the LI and add
                 // to the feature bundle
-                let mut is_last_selec: bool = false; 
+                let mut is_last_selec: bool; 
                 for (i, feature) in individual_feature_split.enumerate() {
-                    is_last_selec = (i as i8 - num_movement_features == 
-                        num_features-num_movement_features-1);
+                    is_last_selec = i as i8 - num_movement_features == 
+                        num_features-num_movement_features-1;
                     
                     let (relation, id) = 
-                    if feature.starts_with("=>") {
+                    if let Some(stripped) = feature.strip_prefix("=>") {
                         // need to create new relation for head merge
 
                         // determine whether the merge is an intermediate
@@ -76,15 +108,15 @@ impl Parser {
                         else {
                                 LIRelation::LMergeInter
                         };
-                        (relation, feature[2..].to_string())
+                        (relation, stripped.to_string())
                     }
-                    else if feature.starts_with("=") {
+                    else if let Some(stripped) = feature.strip_prefix("=") {
                         let relation: LIRelation = if is_last_selec || !requires_intermediate {
                                 LIRelation::LMerge
                         } else {
                                 LIRelation::LMergeInter
                         };
-                        (relation, feature[1..].to_string())
+                        (relation, stripped.to_string())
                     } else if feature.ends_with("=") {
                         let relation: LIRelation = if is_last_selec || !requires_intermediate {
                                 LIRelation::RMerge
@@ -92,10 +124,10 @@ impl Parser {
                                 LIRelation::RMergeInter
                         };
                         (relation, feature[..feature.len() - 1].to_string())
-                    } else if feature.starts_with("-") {
-                        (LIRelation::MinusMove, feature[1..].to_string())
-                    } else if feature.starts_with("+") {
-                        (LIRelation::PlusMove, feature[1..].to_string())
+                    } else if let Some(stripped) = feature.strip_prefix("-") {
+                        (LIRelation::MinusMove, stripped.to_string())
+                    } else if let Some(stripped) = feature.strip_prefix("+") {
+                        (LIRelation::PlusMove, stripped.to_string())
                     } else {
                         (LIRelation::State, feature.clone())
                     };
@@ -107,7 +139,7 @@ impl Parser {
                         rel: relation,
                     });
 
-                    println!("Valid -{}-", feature.to_string());
+                    println!("Valid -{}-", feature);
                 }
             }
             else {
@@ -123,23 +155,18 @@ impl Parser {
     pub async fn convert_stored_to_graph(mg_stored: &mut MG, mg_graph: &GrammarGraph) -> Result<GrammarGraph, Box<dyn Error>> {
         let mut merge_state_indx: usize;
         let mut final_state: Option<State>; 
-        let mut move_hoover: Option<&Feature>;
         let mut intermediate_merge_states: Vec<State> = Vec::new();
         let mut bundle: &Vec<Feature>;
         let mut is_head: bool;
         let mut merge_ids: Vec<String> = Vec::new();
-
-        let mut newest_intermediate_state: Feature;
 
         mg_stored.states.clear();
 
         for li in &mg_stored.mg {
             let mut all_states: Vec<State> = Vec::new();
             let mut total_merges: usize = 0;
-            let mut num_intermediate_states: usize = 0;
 
             // check if this new lexical item is a head or not
-            move_hoover = None;
             final_state = None;
             // defaults to first
             merge_state_indx = 0;
@@ -188,7 +215,6 @@ impl Parser {
                     LIRelation::RMergeInter => { 
                         // laugh at :: *=v* =v +k t;
                         total_merges += 1;
-                        num_intermediate_states += 1;
 
                         // we must update which state will be
                         // connected with the final state.
@@ -215,7 +241,6 @@ impl Parser {
 
                     LIRelation::PlusMove | 
                     LIRelation::MinusMove => {
-                        // move_hoover = Some(f),
                         // append a movement feature to the most
                         // recent state
                         println!("Appending move feature {}", f.id);
@@ -246,7 +271,10 @@ impl Parser {
                     LIRelation::RMerge) 
                 && !mg_stored.states.contains(f.id.as_str()) {
                     mg_stored.states.insert(f.id.to_string());
-                    mg_graph.create_state(f.id.as_str(), None).await?;
+
+                    mg_graph.create_state(
+                        get_default_node(f.id.clone())
+                    ).await?;
                 }
 
             }
@@ -256,13 +284,11 @@ impl Parser {
             let mut previous: String = String::from("");
             let mut non_head_state: String;
             let mut new_state: String;
-            let mut next_merge_li: &str;
             let num_states_in_li: usize = all_states.len();
 
             // iterate over the states which are connected for this
             // specific LI and connect them.
             for (i, s) in all_states.iter().enumerate() {
-                let intermediate_encountered: bool = false;
                 let is_intermediate = s.is_intermediate;
 
                 println!("Working on state {}", s.id);
@@ -270,7 +296,7 @@ impl Parser {
                 if num_states_in_li == 1 {
                     for m in s.moves.iter() {
                         println!("Setting the move property of that state");
-                        mg_graph.set_state_property("name", s.id.as_str(), "move", m).await?;
+                        mg_graph.set_state_property( s.id.as_str(), "move", m).await?;
                     }
                 }
                 // laughs :: =d +k v; Mary :: d -k
@@ -278,14 +304,18 @@ impl Parser {
                 else if i == 0 && !is_intermediate {
                     if let Some(output_state) = final_state.take() {
 
+                        let first_state: Node = get_default_node(s.id.clone());
+                        let second_state: Node = get_default_node(output_state.id.clone());
+                        let connection: Relationship = get_default_relationship(
+                            first_state, 
+                            second_state, 
+                            li.morph.clone()
+                        );
                         // connect the current state and the output state
-                        mg_graph.connect_states(&s.id, &output_state.id, &li.morph, None, None).await?;
+                        mg_graph.connect_states(connection).await?;
 
-                        for m in s.moves.iter() {
-                            // heads are represented as a relationship and as such the property
-                            // of a relationship is set
-                            mg_graph.set_merge_property(&li.morph, "move", &m).await?;
-                        }
+                        let all_moves: String = s.moves.join(",");
+                        mg_graph.set_merge_property(&li.morph, "move", all_moves.as_str()).await?;
                     }
                 }
                 // first operation of multiple
@@ -303,30 +333,33 @@ impl Parser {
                     // be more properly defined.
                     
                     // mg_graph.create_state(non_head_state.as_str()).await?; //redundant?
-                    mg_graph.create_state(new_state.as_str(), Some("Interm")).await?;
+                    mg_graph.create_state(
+                        get_intermediate_node(new_state.clone())
+                    ).await?;
 
                     // make this automatic
                     mg_stored.states.insert(new_state.clone().to_string());
 
                     println!("Connecting two states...");
                     println!("{}{}", non_head_state, new_state);
-                    mg_graph.connect_states(&non_head_state, 
-                        &new_state, 
-                        &li.morph,
-                        None,
-                        Some("Interm")).await?;
+                        let first_state: Node = get_default_node(non_head_state);
+                        let second_state: Node = get_intermediate_node(new_state.clone());
+                        let connection: Relationship = get_default_relationship(
+                            first_state, 
+                            second_state, 
+                            li.morph.clone()
+                        );
+                    mg_graph.connect_states(connection).await?;
 
-                    for m in s.moves.iter() {
-                        // heads are represented as a relationship and as such the property
-                        // of a relationship is set
-                        mg_graph.set_merge_property(&li.morph, "move", m).await?;
-                    }
+                    let all_moves: String = s.moves.join(",");
+                    mg_graph.set_merge_property(&li.morph, "move", all_moves.as_str()).await?;
+                    
                     previous = new_state.to_string().clone();
                 }
                 // TIME TO LEAVE INTERMEDIATE STATES
                 else if i == merge_state_indx && is_intermediate {
                     // <<HeadLI.LI>.LI>
-                    new_state = format!("<{}.{}>", previous, s.id);
+                    // new_state = format!("<{}.{}>", previous, s.id);
 
                     // TODO
                     // Q: should inter states be stored as states internally?
@@ -338,18 +371,17 @@ impl Parser {
                     // which is being brought into the derivation
 
                     if let Some(output_state) = final_state.take() {
-                        mg_graph.connect_states(previous.as_str(), 
-                            &output_state.id, 
-                            s.id.as_str(),
-                            Some("Interm"),
-                            None).await?;
+                        let final_intermediate_node: Node = get_intermediate_node(previous.clone());
+                        let output_node: Node = get_default_node(output_state.id);
+                        let connection: Relationship = get_default_relationship(
+                            final_intermediate_node, 
+                            output_node, 
+                            s.id.clone()
+                        );
+                        mg_graph.connect_states(connection).await?;
 
-                        for m in s.moves.iter() {
-                            // heads are represented as a relationship and as such the property
-                            // of a relationship is set
-                            mg_graph.set_merge_property(s.id.as_str(), "move", m).await?;
-                        }
-
+                        let all_moves: String = s.moves.join(",");
+                        mg_graph.set_merge_property(s.id.as_str(), "move", all_moves.as_str()).await?;
                     }
                 }
                 // NOT FIRST AND INTERMEDIATE
@@ -359,7 +391,10 @@ impl Parser {
                     println!("Is Intermediate!");
                     new_state = format!("<{}.{}>", previous, s.id);
                     println!("Creating state {}", new_state);
-                    mg_graph.create_state(new_state.as_str(), Some("Interm")).await?;
+
+                    mg_graph.create_state(
+                        get_intermediate_node(new_state.clone())
+                    ).await?;
 
                     // TODO
                     // Q: should inter states be stored as states internally?
@@ -370,21 +405,21 @@ impl Parser {
                     // for non-intermediate nodes it's the head
                     // which is being brought into the derivation
 
-                    mg_graph.connect_states(previous.as_str(), 
-                        &new_state, 
-                        s.id.as_str(),
-                        Some("Interm"),
-                        Some("Interm")).await?;
+                    let intermediate_node_a: Node = get_intermediate_node(previous.clone());
+                    let intermediate_node_b: Node = get_intermediate_node(new_state.clone());
+                    let connection: Relationship = get_default_relationship(
+                        intermediate_node_a, 
+                        intermediate_node_b, 
+                        s.id.clone()
+                    );
+                    mg_graph.connect_states(connection).await?;
 
                     for m in s.moves.iter() {
                         // heads are represented as a relationship and as such the property
                         // of a relationship is set
-                        mg_graph.set_state_property("name", new_state.as_str(), "move", m).await?;
+                        mg_graph.set_state_property(new_state.as_str(), "move", m).await?;
                     }
                     previous = new_state.to_string().clone();
-                }
-                else {
-                    println!("IN THE ELSE BRANCH");
                 }
 
             }

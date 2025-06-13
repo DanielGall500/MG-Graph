@@ -1,13 +1,16 @@
-use neo4rs::{query, Graph, Config, ConfigBuilder};
-use serde_json::Value;
-use std::{collections::HashMap, error::Error};
-use crate::cypher::cquery::CQueryStorage;
+use neo4rs::{query, Graph, ConfigBuilder};
+use std::{error::Error};
+use crate::cypher::cquery::{CQueryStorage, Node, Relationship};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct GeneralGraph {
     pub graph: Graph,
     pub queries: CQueryStorage
 }
+
+const DEFAULT_NODE_STATE: &str = "State";
+const INTERM_NODE_STATE: &str = "Interm";
 
 impl GeneralGraph {
     /* TODO: Make only one config. */
@@ -64,9 +67,8 @@ impl GeneralGraph {
         })
     }
 
-    pub async fn create_node(&self, category: &str, label_id: &str, label_val: &str) -> Result<(), Box<dyn Error>> {
-        let create_node_query = self.queries.get_create_node(
-            category, label_id, label_val);
+    pub async fn create_node(&self, n: Node) -> Result<(), Box<dyn Error>> {
+        let create_node_query = self.queries.get_create_node(n);
         println!("Creating Node: {}", create_node_query.query);
         self.run(&create_node_query.query).await?;
         println!("Finished running.");
@@ -74,30 +76,27 @@ impl GeneralGraph {
     }
 
     #[allow(dead_code)]
-    pub async fn delete_node(&self, category: &str, label_id: &str, label_val: &str) -> Result<(), Box<dyn Error>> {
-        let remove_node_query = self.queries.get_delete_node(category, label_id, label_val);
+    pub async fn delete_node(&self, n: Node) -> Result<(), Box<dyn Error>> {
+        let remove_node_query = self.queries.get_delete_node(n);
         self.run(&remove_node_query.query).await?;
         Ok(())
     }
 
-    pub async fn set_node_property(&self, category: &str, label_id: &str, label_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
+    pub async fn set_node_property(&self, category: &str, label_val: &str, property_key: &str, property_val: &str) -> Result<(), Box<dyn Error>> {
         let set_node_property = self.queries.get_set_node_property(
-            category, label_id, label_val, property_key, property_val);
+            category, "name", label_val, property_key, property_val);
 
         println!("Running Query: {}", set_node_property.name);
         self.run(&set_node_property.query).await?;
         Ok(())
     }
 
-    pub async fn set_relationship(&self, cat_a: &str, node_a_key: &str, node_a_val: &str, 
-        cat_b: &str, node_b_key: &str, node_b_val: &str, 
-        cat_rel: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>> {
-        let set_relationship = self.queries.get_set_relationship(
-            cat_a, node_a_key, node_a_val, 
-            cat_b, node_b_key, node_b_val, 
-            cat_rel, prop_key, prop_val);
+    pub async fn set_relationship(&self, rel: Relationship) -> Result<(), Box<dyn Error>> {
+        let set_relationship = self.queries.get_set_relationship(rel.clone());
         println!("Running Query: {}", set_relationship.query);
         self.run(&set_relationship.query).await?;
+
+        self.set_relationship_property("li", rel.li.as_str(), "move", "").await?;
         Ok(())
     }
 
@@ -199,9 +198,9 @@ impl GrammarGraph {
         self.base.test_connection().await
     }
 
-    pub async fn set_state_property(&self, label_id: &str, label_val: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{
+    pub async fn set_state_property(&self, label_val: &str, prop_key: &str, prop_val: &str) -> Result<(), Box<dyn Error>>{
         println!("Setting State Property");
-        self.base.set_node_property("State", label_id, label_val, prop_key, prop_val).await?;
+        self.base.set_node_property("State",  label_val, prop_key, prop_val).await?;
         Ok(())
     }
 
@@ -214,40 +213,36 @@ impl GrammarGraph {
         Ok(())
     }
 
-    pub async fn create_state(&self, name: &str, type_: Option<&str>) -> Result<(), Box<dyn Error>> {
-        self.base.create_node(type_.unwrap_or("State"), "name", name).await?;
-        self.set_state_property("name", name, "move", "").await?;
+    pub async fn create_state(&self, n: Node) -> Result<(), Box<dyn Error>> {
+        self.base.create_node(n).await?;
         Ok(())
     }
 
     // "MATCH (a:{} {{ name: \"{}\" }})-[edge:MERGE {{ li: \'{}\' }}]->(b:{} {{name: \"{}\" }}) DELETE edge"
-    pub async fn connect_states(&self, state_a: &str, state_b: &str, rel: &str, 
-        state_a_type_: Option<&str>, state_b_type_: Option<&str>) -> Result<(), Box<dyn Error>> {
-        self.base.set_relationship(state_a_type_.unwrap_or("State"), "name", state_a, 
-        state_b_type_.unwrap_or("State"), "name", state_b, "MERGE", "li", rel).await?;
+    pub async fn connect_states(&self, rel: Relationship) -> Result<(), Box<dyn Error>> {
+        self.base.set_relationship(rel).await?;
         
         // NOTE: Fix for relationships of the same LI
-        self.set_merge_property(rel, "move", "").await?;
+        // self.set_merge_property(rel.li.as_str(), "move", "").await?;
         Ok(())
     }
 
     #[allow(dead_code)]
     pub async fn delete_edge<'a>(&self, edge: &Edge<'a>) -> Result<(), Box<dyn Error>> {
-        self.base.remove_relationship("State", "name", &edge.state_a_id, 
-        "State", "name", &edge.state_b_id, "MERGE", "li", &edge.rel).await?;
+        self.base.remove_relationship("State", "name", edge.state_a_id, 
+        "State", "name", edge.state_b_id, "MERGE", "li", edge.rel).await?;
         Ok(())
     }
 
     #[allow(dead_code)]
-    pub async fn contract_edge<'a>(&self, edge: &Edge<'a>) -> Result<(), Box<dyn Error>> {
-        println!("Contracting {}-{}-{}", edge.state_a_id, edge.state_b_id, edge.rel);
-        let new_node_id = format!("{}-{}", edge.state_a_id, edge.state_b_id);
+    pub async fn contract_edge<'a>(&self, edge: &Relationship) -> Result<(), Box<dyn Error>> {
+        let new_node_id = format!("{}-{}", edge.node_a.label, edge.node_b.label);
         let contract_edge_query = format!(
             "MATCH (a:State {{ name: '{}' }})-[e:MERGE {{ li: \'{}\' }}]->(b:State {{ name: '{}' }})
                 WITH a, b, e
                 CREATE (merged:State {{ name: '{}' }})
                 DELETE e", 
-            &edge.state_a_id, &edge.rel, &edge.state_b_id, &new_node_id);
+            &edge.node_a.label, &edge.li, &edge.node_b.label, &new_node_id);
 
         println!("Query: {}", contract_edge_query);
         self.base.graph.run(query(contract_edge_query.as_str())).await?;
@@ -258,9 +253,9 @@ impl GrammarGraph {
             WITH a, b, r
             MATCH (n {{ name: '{}' }})
             CREATE (n)-[newRel: MERGE {{ li: r.li }}]->(b)", 
-            &edge.state_a_id, &edge.state_b_id, &new_node_id);
+            &edge.node_a.label.as_str(), &edge.node_b.label.as_str(), &new_node_id);
         println!("Query: {}", reassign_relationships_from_new_node);
-        self.base.graph.run(query(&reassign_relationships_from_new_node.as_str())).await?;
+        self.base.graph.run(query(reassign_relationships_from_new_node.as_str())).await?;
 
         let reassign_relationships_to_new_node = format!(
             "MATCH (a)-[r:MERGE]->(b)
@@ -268,12 +263,12 @@ impl GrammarGraph {
             WITH a, b, r
             MATCH (n {{ name: '{}' }})
             CREATE (a)-[newRel: MERGE {{ li: r.li }}]->(n)", 
-            &edge.state_a_id, &edge.state_b_id, &new_node_id);
+            &edge.node_a.label.as_str(), &edge.node_b.label.as_str(), &new_node_id);
         println!("Query: {}", reassign_relationships_to_new_node);
-        self.base.graph.run(query(&reassign_relationships_to_new_node.as_str())).await?;
+        self.base.graph.run(query(reassign_relationships_to_new_node.as_str())).await?;
 
-        self.base.delete_node("State", "name", &edge.state_a_id).await?;
-        self.base.delete_node("State", "name", &edge.state_b_id).await?;
+        self.base.delete_node(edge.node_a.clone()).await?;
+        self.base.delete_node(edge.node_b.clone()).await?;
         Ok(())
     }
 

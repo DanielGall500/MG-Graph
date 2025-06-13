@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 pub struct Grammar {
-    mg: String,
-    statements: Vec<String>,
     pub alphabet_size: usize,
     pub n_feature_types: usize,
     pub set_phon: Vec<String>,
@@ -15,12 +13,10 @@ impl Grammar {
 
         if set_phon.len() == set_feature_bundles.len() {
             Ok(Self {
-                mg: mg.to_string(),
-                statements: statements,
-                alphabet_size: alphabet_size,
-                n_feature_types: n_feature_types,
-                set_phon: set_phon,
-                set_feature_bundles: set_feature_bundles
+                alphabet_size,
+                n_feature_types,
+                set_phon,
+                set_feature_bundles
             })
         }
         else {
@@ -37,11 +33,11 @@ impl Grammar {
         unique_features.len()
     }
 
-    pub fn get_phon_size(&self) -> usize {
+    pub fn _get_phon_size(&self) -> usize {
         self.set_phon.len()
     }
 
-    pub fn get_feature_size(&self) -> usize {
+    pub fn _get_feature_size(&self) -> usize {
         flatten(&self.set_feature_bundles).len()
     }
 

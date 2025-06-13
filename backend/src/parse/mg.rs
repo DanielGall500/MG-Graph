@@ -3,6 +3,8 @@ use std::io::{BufReader, Write};
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs::{File, read_to_string};
+use std::path::{PathBuf};
+use crate::data::storage::DataManager;
 use std::fmt;
 
 
@@ -64,9 +66,14 @@ impl MG {
         self.mg = updated_mg;
     }
 
-    pub fn to_json(&self, title: &str) -> Result<(), Box<dyn Error>> {
-        let path: String = format!("./parse/grammar_parsed_{}.json", title);
+    pub async fn to_json(&self, title: &str) -> Result<(), Box<dyn Error>> {
+        let filename: String = format!("grammar_parsed_{}.json", title);
+        let path: PathBuf = DataManager::get_data_path(filename.as_str());
+
+        DataManager::ensure_file_exists(&path).await?;
+
         let mut file = File::create(path)?;
+
         match serde_json::to_string_pretty(&self.mg) {
             Ok(json) => file.write_all(json.as_bytes())?,
             Err(e) => eprintln!("Error serializing data to JSON: {}", e),
@@ -74,8 +81,11 @@ impl MG {
         Ok(())
     }
 
-    pub fn from_json(&self, title: &str) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
-        let path: String = format!("./parse/grammar_parsed_{}.json", title);
+    pub fn _from_json(&self, title: &str) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
+        let filename: String = format!("grammar_parsed_{}.json", title);
+        let path: PathBuf = DataManager::get_data_path(filename.as_str());
+
+
         let file = File::open(path)?;
         let reader = BufReader::new(file);
         let config: Vec<LexicalItem> = serde_json::from_reader(reader)?;
@@ -83,7 +93,9 @@ impl MG {
     }
 
     pub fn from_json_raw(&self, title: &str) -> Result<String, Box<dyn Error>> {
-        let path = format!("./parse/grammar_parsed_{}.json", title);
+        let filename: String = format!("grammar_parsed_{}.json", title);
+        let path: PathBuf = DataManager::get_data_path(filename.as_str());
+
         let json_str = read_to_string(path)?; // reads the raw JSON as text
         Ok(json_str)
     }

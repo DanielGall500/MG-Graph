@@ -4,7 +4,7 @@ use tokio::io::AsyncWriteExt;
 use serde::de::DeserializeOwned;
 use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 #[derive(Serialize, Deserialize)]
 pub struct MGExample {
@@ -30,7 +30,7 @@ impl DataManager {
     const SETTINGS_PATH: &str = "settings.json";
     const MG_COLLECTION_PATH: &str = "mg.json";
 
-    fn get_data_path(filename: &str) -> PathBuf {
+    pub fn get_data_path(filename: &str) -> PathBuf {
 
         // Get the directory of the running executable
         let exe_dir = std::env::current_exe()
@@ -43,7 +43,7 @@ impl DataManager {
         exe_dir.join("data").join("json").join(filename)
     }
 
-    async fn ensure_file_exists(path: &Path) -> std::io::Result<()> {
+    pub async fn ensure_file_exists(path: &PathBuf) -> std::io::Result<()> {
         // Ensure the parent directory exists
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).await?;
@@ -63,7 +63,7 @@ impl DataManager {
         Self::save_one_to_file(Self::SETTINGS_PATH, settings).await
     }
 
-    pub async fn edit_settings_key<K: Into<String>, V: Serialize>(
+    pub async fn _edit_settings_key<K: Into<String>, V: Serialize>(
         key: K,
         value: V,
     ) -> std::io::Result<()> {
@@ -86,7 +86,7 @@ impl DataManager {
     }
 
     pub async fn save_mg_collection(mgs: &MGCollection) -> std::io::Result<()> {
-        Self::save_many_to_file(Self::MG_COLLECTION_PATH, &mgs).await
+        Self::save_many_to_file(Self::MG_COLLECTION_PATH, mgs).await
     }
 
     pub async fn save_one_to_file<T: Serialize>(path: &str, obj: &T) -> std::io::Result<()> {

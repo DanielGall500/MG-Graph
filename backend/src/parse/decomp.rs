@@ -11,14 +11,13 @@ use std::{
 };
 
 pub struct Decomposer {
-    pub mg: Vec<LexicalItem>,
     pub candidate_map: HashMap<String, Vec<usize>>
 }
 
 #[derive(Debug)]
 pub enum AffixType {
-    PREFIX,
-    SUFFIX
+    Prefix,
+    Suffix
 }
 
 #[derive(Debug)]
@@ -27,18 +26,12 @@ pub struct Affix {
 }
 
 impl Affix {
-    pub fn new(morph: &str) -> Self {
-        Self {
-            morph: morph.to_string(),
-        }
-    }
-
     fn get_affix_type(&self) -> Result<AffixType, Box<dyn Error>> {
         if self.morph.ends_with("-") {
-            Ok(AffixType::PREFIX)
+            Ok(AffixType::Prefix)
         }
         else if self.morph.starts_with("-") {
-            Ok(AffixType::SUFFIX)
+            Ok(AffixType::Suffix)
         }
         else {
             Err("Invalid affix: must start or end with '-'".into())
@@ -48,11 +41,11 @@ impl Affix {
 
 impl Decomposer {
     pub fn new() -> Self {
-        Self { mg: Vec::new(), candidate_map: HashMap::new() }
+        Self { candidate_map: HashMap::new() }
     }
 
     pub fn decompose(&self, mg: Vec<LexicalItem>, lis_to_decompose: Vec<usize>, affix: Affix, syntax_split_boundary: usize) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
-        let mut decomposed_mg: Vec<LexicalItem> = Vec::new();
+        let mut decomposed_mg: Vec<LexicalItem>;
         let mut decomposed_li: LexicalItem;
         let mut li_morph_decomp: String;
         // dummy affix, improve this
@@ -64,29 +57,29 @@ impl Decomposer {
         
         /* Ensure affix type is valid, otherwise return unchanged MG. */
         let affix_type = match affix.get_affix_type() {
-            Ok(AffixType::PREFIX) => AffixType::PREFIX,
-            Ok(AffixType::SUFFIX) =>  AffixType::SUFFIX,
+            Ok(AffixType::Prefix) => AffixType::Prefix,
+            Ok(AffixType::Suffix) =>  AffixType::Suffix,
             Err(e) => {
-                return Err(e.into())
+                return Err(e)
             }
         };
 
         for li_index in lis_to_decompose.iter() {
             println!("LI Index: {}", li_index);
-            println!("Actual: {}", mg.get(li_index.clone()).unwrap().morph);
+            println!("Actual: {}", mg.get(*li_index).unwrap().morph);
         }
 
         // handle decomp
         let mut decomposed_lis: Vec<LexicalItem> = Vec::new();
         for (i, li_index) in lis_to_decompose.iter().enumerate() {
-            if let Some(li) = mg.get(li_index.clone()) {
+            if let Some(li) = mg.get(*li_index) {
                 println!("Operating on LI: {}", li.morph);
                 println!("Affix Type: {:?}", affix.get_affix_type().unwrap());
                 let mut bundle = li.bundle.clone();
 
                 match affix_type {
-                    AffixType::PREFIX =>  li_morph_decomp = li.morph[affix_size-1..].to_string(),
-                    AffixType::SUFFIX =>  li_morph_decomp = li.morph[0..li.morph.len()-affix_size].to_string(),
+                    AffixType::Prefix =>  li_morph_decomp = li.morph[affix_size-1..].to_string(),
+                    AffixType::Suffix =>  li_morph_decomp = li.morph[0..li.morph.len()-affix_size].to_string(),
                 }
 
                 // should move elements to a new bundle but need to check
@@ -118,7 +111,7 @@ impl Decomposer {
 
                 decomposed_li = LexicalItem {
                     morph: li_morph_decomp,
-                    bundle: bundle
+                    bundle
                 };
                 decomposed_lis.push(decomposed_li.clone());
 
@@ -157,12 +150,12 @@ impl Decomposer {
         let mut candidate_set_threshold: HashMap<String, Vec<usize>> = HashMap::new();
 
         for (affix, lis) in candidate_set.into_iter() {
-            let total_sim: f64 = lis.iter().map(|(x,y)| y).sum();
+            let total_sim: f64 = lis.iter().map(|(_x,y)| y).sum();
             let count = lis.len();
             let mean_sim = total_sim / count as f64;
 
-            let variance = lis.iter().map(|(x,y)| {
-                let diff = mean_sim - (*y as f64);
+            let variance = lis.iter().map(|(_x,y)| {
+                let diff = mean_sim - *y;
 
                 diff * diff
             }).sum::<f64>() / count as f64;
@@ -173,8 +166,8 @@ impl Decomposer {
             let threshold = mean_sim + (alpha * std_dev);
 
             let li_final_candidates: Vec<usize> = lis.into_iter()
-            .filter(|(x,y)| y >= &threshold)
-            .map(|(x,y)| x)
+            .filter(|(_x,y)| y >= &threshold)
+            .map(|(x,_y)| x)
             .collect();
 
             candidate_set_threshold.insert(affix.clone(), li_final_candidates.clone());
@@ -186,7 +179,7 @@ impl Decomposer {
     }
 
     pub fn find_decomposition_candidates(&self, mg: &Vec<LexicalItem>) -> HashMap<String, Vec<(usize, f64)>> {
-        let affix_map: HashMap<String, HashSet<usize>> = self.get_affix_map(&mg);
+        let affix_map: HashMap<String, HashSet<usize>> = self.get_affix_map(mg);
 
         let empty_li = LexicalItem {
             morph: String::from(""),
@@ -202,11 +195,11 @@ impl Decomposer {
         for (affix, li_indices) in affix_map.iter() {
 
             for i in li_indices.iter() {
-                if let Some(affix_li) = mg.get(i.clone()) {
+                if let Some(affix_li) = mg.get(*i) {
 
                     /* Bug: Includes similarity to itself. */
                     li_similarity_vec = li_indices.iter()
-                    .map(|x| self.get_syntactic_similarity(mg.get(x.clone()).unwrap_or(&empty_li), affix_li)).collect();
+                    .map(|x| self.get_syntactic_similarity(mg.get(*x).unwrap_or(&empty_li), affix_li)).collect();
 
                     // println!("Similarities of {}:", affix_li.morph);
                     // for s in &li_similarity_vec {
@@ -219,8 +212,8 @@ impl Decomposer {
                     avg_sim = total_sim / count as f64;
 
                     candidate_map.entry(affix.clone())
-                    .or_insert_with(Vec::new)
-                    .push((i.clone(), avg_sim));
+                    .or_default()
+                    .push((*i, avg_sim));
                 }
             }
 
@@ -247,7 +240,7 @@ impl Decomposer {
             x as u16 as f64
         };
 
-        let is_active_feature_same = &fb1[0] == &fb2[0];
+        let is_active_feature_same = fb1[0] == fb2[0];
         if is_active_feature_same {
             n = min(fb1.len(), fb2.len());
             let alpha: f64 = 2.0;
@@ -268,7 +261,7 @@ impl Decomposer {
         similarity
     }
 
-    pub fn get_affix_map(&self, mg: &Vec<LexicalItem>) -> HashMap<String, HashSet<usize>> {
+    pub fn get_affix_map(&self, mg: &[LexicalItem]) -> HashMap<String, HashSet<usize>> {
         // all morphemes in our MG
         let morphs: Vec<String> = mg.iter().map(|x| x.morph.to_string()).collect();
         let mut affix_map: HashMap<String, HashSet<usize>> = HashMap::new();
@@ -279,18 +272,18 @@ impl Decomposer {
         for (i, m1) in morphs.iter().enumerate() {
             j = i+1;
             for m2 in &morphs[j..] {
-                let (pre, suff) = self.get_common_affix(&m1, &m2);
+                let (pre, suff) = self.get_common_affix(m1, m2);
 
                 // creates a dictionary which stores each affix
                 // and the lexical item index to which it is associated.
                 if !pre.is_empty() {
                     affix_map.entry(format!("{pre}-"))
-                    .or_insert_with(HashSet::new)
+                    .or_default()
                     .extend([i,j].iter());
                 }
                 if !suff.is_empty() {
                     affix_map.entry(format!("-{suff}"))
-                    .or_insert_with(HashSet::new)
+                    .or_default()
                     .extend([i,j].iter());
                 }
                 j += 1;

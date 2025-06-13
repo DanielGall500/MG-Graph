@@ -17,7 +17,7 @@ mod cypher;
 mod parse;
 mod data;
 
-use calculator::Calculate;
+use calculator::{Calculate, MDL};
 use parse::{
     graph::GrammarGraph,
     mg::{MG, LexicalItem},
@@ -25,11 +25,6 @@ use parse::{
     decomp::{Decomposer,Affix},
 };
 use data::storage::{DataManager, MGCollection, MGExample, Settings};
-
-#[derive(Deserialize)]
-struct GrammarInput {
-    grammar: String,
-}
 
 #[get("/health")]
 async fn health_check() -> impl Responder {
@@ -52,7 +47,7 @@ async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) {
         let mut mg_parser = data.mg_parser.lock().await;
         mg_parser.update_grammar(updated);
 
-        match mg_parser.to_json("recent") {
+        match mg_parser.to_json("recent").await {
             Ok(()) => println!("Updated JSON with decomposition step."),
             Err(e) => eprintln!("{}",e),
         }
@@ -60,7 +55,7 @@ async fn update_mg(data: &web::Data<MGState>, updated: Vec<LexicalItem>) {
 
 }
 
-async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
+async fn parse_new_mg(data: &web::Data<MGState>, grammar: &str) -> Result<Vec<LexicalItem>, Box<dyn Error>> {
     println!("Parsing New MG");
     let mut mg_parser = data.mg_parser.lock().await;
 
@@ -71,7 +66,7 @@ async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec
         Err(e) => println!("Invalid grammar parse: {}", e),
     }
 
-    match mg_parser.to_json("recent") {
+    match mg_parser.to_json("recent").await {
         Ok(()) => println!("Successful JSON conversion for new MG parsing."),
         Err(e) => println!("Invalid JSON conversion: {}", e),
     }
@@ -82,13 +77,6 @@ async fn parse_new_mg(data: &web::Data<MGState>, grammar: &String) -> Result<Vec
 async fn update_grammar_graph(data: &web::Data<MGState>) {
     println!("Updating Grammar Graph");
     let graph_guard = data.graph_db.read().await;
-
-    if let Some(db) = graph_guard.as_ref() {
-        println!("There's a graph alright.");
-    }
-    else {
-        println!("Nope no graph");
-    }
 
     if let Some(db) = graph_guard.as_ref() {
         match db.clear().await {
@@ -108,7 +96,7 @@ async fn update_grammar_graph(data: &web::Data<MGState>) {
 
 
             match Parser::convert_stored_to_graph(&mut mg_parser, &*db).await {
-                Ok(g) => println!("Graph updated successfully."),
+                Ok(_g) => println!("Graph updated successfully."),
                 Err(e) => println!("Problem updating graph: {}", e)
             }
     
@@ -116,36 +104,46 @@ async fn update_grammar_graph(data: &web::Data<MGState>) {
     }
 }
 
-fn calculate_size_from_string(grammar: &str) -> f64 {
-    let grammar = match Grammar::new(grammar, 26, 7, ';') {
+
+fn calculate_size_from_string(grammar: &str, alphabet_size: usize, num_types: usize) -> MDL {
+    let grammar = match Grammar::new(grammar, alphabet_size, num_types, ';') {
         Ok(g) => g, // If successful, bind the grammar to `g`
         Err(e) => panic!("Failed to create Grammar: {}", e), 
     };
 
     let calculator: calculator::GrammarSizeCalculator = calculator::GrammarSizeCalculator;
-    let size: f64 = calculator.get_grammar_size(&grammar, false);
+    let size: MDL = calculator.get_grammar_size(&grammar, false);
     size
-}
-
-#[get("/calculate-size")]
-async fn request_calculate_size(data: web::Data<MGState>) -> HttpResponse {
-    println!("BEGINNING SIZE CALCULATION");
-    // calculate the size of the MG
-    // converts to a text representation first
-    let mg_parser = data.mg_parser.lock().await;
-    let mg_as_str = format!("{}", mg_parser);
-    let size: f64 = calculate_size_from_string(&mg_as_str);
-    println!("NEW SIZE: {}", size);
-
-    let response = GrammarSizeResponse { grammar: mg_as_str, size };
-    HttpResponse::Ok().json(response)
 }
 
 
 #[derive(Serialize)]
 struct GrammarSizeResponse {
     grammar: String,
-    size: f64,
+    size: MDL,
+}
+#[derive(Deserialize)]
+struct CalculateSizeInput {
+    alphabet_size: usize,
+    num_types: usize
+}
+#[post("/calculate-size")]
+async fn request_calculate_size(data: web::Data<MGState>, input: web::Json<CalculateSizeInput>) -> HttpResponse {
+    // calculate the size of the MG
+    // converts to a text representation first
+    let mg_parser = data.mg_parser.lock().await;
+    let mg_as_str = format!("{}", mg_parser);
+    let size: MDL = calculate_size_from_string(&mg_as_str, input.alphabet_size.clone(), input.num_types.clone());
+
+    let response = GrammarSizeResponse { grammar: mg_as_str, size };
+    HttpResponse::Ok().json(response)
+}
+
+#[derive(Deserialize)]
+struct GrammarInput {
+    grammar: String,
+    alphabet_size: usize,
+    num_types: usize
 }
 #[post("/build-initial-mg")]
 async fn build_initial_mg(data: web::Data<MGState>, input: web::Json<GrammarInput>) -> HttpResponse {
@@ -153,20 +151,19 @@ async fn build_initial_mg(data: web::Data<MGState>, input: web::Json<GrammarInpu
     update_grammar_graph(&data).await;
     update_mg(&data, new_mg.unwrap()).await;
 
-    let size: f64 = calculate_size_from_string(&input.grammar);
-    println!("Size of MG: {}", size);
+    let size: MDL = calculate_size_from_string(&input.grammar, input.alphabet_size.clone(), input.num_types.clone());
     let response = GrammarSizeResponse { grammar: input.grammar.clone(), size };
     HttpResponse::Ok().json(response)
 }
 
 #[derive(Deserialize)]
 struct CombinationInput {
-    state_a: String,
-    state_b: String,
+    _state_a: String,
+    _state_b: String,
 }
 #[post("/combine")]
-async fn combine(data: web::Data<MGState>, input: web::Json<CombinationInput>) -> HttpResponse {
-    let mut mg_parser = data.mg_parser.lock().await;
+async fn combine(data: web::Data<MGState>, _input: web::Json<CombinationInput>) -> HttpResponse {
+    let mut _mg_parser = data.mg_parser.lock().await;
     /*
     Should combine two states.
      */
@@ -295,12 +292,12 @@ struct SaveMGInput {
 }
 
 #[post("/store-mg")]
-async fn store_mg(data: web::Data<MGState>, input: web::Json<MGExample>) -> impl Responder {
+async fn store_mg(input: web::Json<MGExample>) -> impl Responder {
 
     let mut my_mgs: MGCollection;
     match DataManager::load_mg_collection::<MGCollection>().await {
         Ok(data) => my_mgs = data,
-        Err(e) => {
+        Err(_e) => {
             my_mgs = MGCollection::new(); 
         }
     }
@@ -317,6 +314,33 @@ async fn store_mg(data: web::Data<MGState>, input: web::Json<MGExample>) -> impl
 }
 
 #[derive(Serialize, Deserialize)]
+struct GrammarIndex {
+    index: usize
+}
+#[post("/delete-mg")]
+async fn delete_mg(input: web::Json<GrammarIndex>) -> impl Responder {
+
+    let mut my_mgs: MGCollection;
+    match DataManager::load_mg_collection::<MGCollection>().await {
+        Ok(data) => my_mgs = data,
+        Err(_e) => {
+            return HttpResponse::InternalServerError().body("Failed to delete MG. Couldn't be loaded.");
+        }
+    }
+
+    my_mgs.remove(input.index);
+
+    println!("Saving text...");
+    if let Err(e) = DataManager::save_mg_collection(&my_mgs).await {
+        eprintln!("Failed to save text: {}", e);
+        return HttpResponse::InternalServerError().body("Failed to write to file");
+    }
+    println!("Text saved.");
+    HttpResponse::Ok().body("Grammar stored.")
+
+}
+
+#[derive(Serialize, Deserialize)]
 struct DBAuth {
     db_addr: String,
     db_name: String,
@@ -324,7 +348,7 @@ struct DBAuth {
     password: String,
 }
 #[post("/store-db-auth")]
-async fn store_db_auth(data: web::Data<MGState>, db_auth: web::Json<DBAuth>) -> impl Responder {
+async fn store_db_auth(db_auth: web::Json<DBAuth>) -> impl Responder {
 
     if let Err(e) = DataManager::save_settings(&db_auth).await {
         eprintln!("Failed to save text: {}", e);
@@ -347,19 +371,18 @@ async fn load_mg_collection() -> impl Responder {
 
 #[get("/test-db-auth")]
 async fn test_db_auth(data: web::Data<MGState>) -> impl Responder {
-    let settings: Settings;
-    match DataManager::load_settings::<Settings>().await {
+    let settings: Settings = match DataManager::load_settings::<Settings>().await {
         Ok(data) => {
-            settings = data;
+            data
         }
         Err(e) => {
             eprintln!("Unable to load settings: {}", e);
             return HttpResponse::InternalServerError().body(format!("Unable to access settings. {}", e));
         }
-    }
+    };
 
     if let Err(e) = connect_to_neo4j(data, settings.db_addr.as_str(), 
-    &settings.db_name.as_str(), 
+    settings.db_name.as_str(), 
     settings.username.as_str(), 
     settings.password.as_str()).await {
             eprintln!("Unable to establish a connection: {}", e);
@@ -377,13 +400,13 @@ async fn load_settings() -> Result<Settings, Box<dyn Error>> {
 async fn get_settings() -> impl Responder {
     match load_settings().await {
         Ok(settings) => {
-            return HttpResponse::Ok().json(settings);
+            HttpResponse::Ok().json(settings)
         }
         Err(e) => {
             eprintln!("Settings could not be loaded: {}", e);
-            return HttpResponse::InternalServerError().body(format!("Settings could not be loaded. {}", e));
+            HttpResponse::InternalServerError().body(format!("Settings could not be loaded. {}", e))
         }
-    };
+    }
 }
 
 async fn connect_to_neo4j(data: web::Data<MGState>, db_addr: &str, db_name: &str, db_username: &str, db_pw: &str) -> Result<(), Box<dyn Error>> {
@@ -417,7 +440,7 @@ async fn get_mg_json(data: web::Data<MGState>) -> impl Responder {
         Ok(json) => {
             HttpResponse::Ok().body(json)
         }
-        Err(e) => {
+        Err(_e) => {
             eprintln!("Unable to get current MG as JSON.");
             HttpResponse::InternalServerError().body("Unable to retrieve MG.")
         }
@@ -496,6 +519,7 @@ async fn main() -> io::Result<()> {
             .service(combine)
             .service(pathways)
             .service(store_mg)
+            .service(delete_mg)
             .service(load_mg_collection)
             .service(store_db_auth)
             .service(test_db_auth)
