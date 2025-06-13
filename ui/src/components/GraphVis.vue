@@ -20,7 +20,11 @@ const status = ref()
 
 onMounted(() => {
     update_settings();
+    reload_vis();
 });
+
+const vizContainer = ref(null)
+const canvasRef = ref(null)
 
 function showMessage(summary: string, detail: string, is_error: boolean) {
     const sev = is_error ? "error" : "success";
@@ -75,10 +79,10 @@ async function reload_vis() {
             enabled: true, // Enable physics simulation
             solver: 'forceAtlas2Based', // Use the forceAtlas2 solver for better node spacing
             forceAtlas2Based: {
-                gravitationalConstant: -100, // Change gravitational constant to pull nodes further apart
-                centralGravity: 0.01, // Adjust the central gravity to move nodes away from the center
+                gravitationalConstant: -150, // Change gravitational constant to pull nodes further apart
+                centralGravity: 0.003, // Adjust the central gravity to move nodes away from the center
                 springLength: 250, // Increase spring length to make nodes more spread out
-                springConstant: 0.05, // Decrease spring constant for less attractive force
+                springConstant: 0.02, // Decrease spring constant for less attractive force
                 damping: 0.4, // Adjust the damping to slow the node movement
             },
             barnesHut: {
@@ -91,14 +95,83 @@ async function reload_vis() {
           },
         },
         labels: {
-          State: {
-              label: "name",
+          "State": {
+            label: "name",
+           [NeoVis.NEOVIS_ADVANCED_CONFIG]: {
+                static: {
+                    color: {
+                        border: "#ffffff",
+                        background: "#ffffff",
+                        highlight: {
+                            border: "#ffffff",
+                            background: "#000000"
+                        }
+                    },
+                    shape: "dot",
+                    size: 50,
+                    borderWidth: "1",
+                    font: {
+                        "background": "none",
+                        "strokeWidth": "0",
+                        "size": 30,
+                        "color": "#464646"
+                    }
+                },
+                function: {
+                    color: {
+                        background: (node) => node.properties.CVE_ID ? "#bd6962" : node.properties.CWE_ID ? "#a4cbfa" : node.properties.PUBLISH_DATE ? "#f7ce46" : "#a4cb9d",
+                    },
+                    title: (node) => NeoVis.objectToTitleString(node, ["CVE_ID", "YEAR", "CWE_ID", "CAUSE", "LOCATION", "VERSION", "ATTACKER", "CONSEQUENCE", "OPERATION"])
+                }
+            }
+          },
+          "Interm": {
+            label: "name",
+           [NeoVis.NEOVIS_ADVANCED_CONFIG]: {
+                static: {
+                    color: {
+                        border: "#ffffff",
+                        background: "#ffffff",
+                        highlight: {
+                            border: "#ffffff",
+                            background: "#000000"
+                        }
+                    },
+                    shape: "dot",
+                    size: 50,
+                    borderWidth: "1",
+                    font: {
+                        "background": "none",
+                        "strokeWidth": "0",
+                        "size": 30,
+                        "color": "#464646"
+                    }
+                },
+                function: {
+                    color: {
+                        background: (node) => node.properties.CVE_ID ? "#b833ff" : node.properties.CWE_ID ? "#b833ff" : node.properties.PUBLISH_DATE ? "#b833ff" : "#b833ff",
+                        // background: (node) => node.properties.move == "-k" ? "#f7ce46" : "#a4cb9d",
+                    },
+                    title: (node) => NeoVis.objectToTitleString(node, ["CVE_ID", "YEAR", "CWE_ID", "CAUSE", "LOCATION", "VERSION", "ATTACKER", "CONSEQUENCE", "OPERATION"])
+                }
+            }
           }
         },
         relationships: {
-            MERGE: {
-              label: "li"
-            }
+            'Merge': {
+              label: "li",
+              [NeoVis.NEOVIS_ADVANCED_CONFIG]: {
+                  static: {
+                      label: "li",
+                      color: "#64b687",
+                      font: {
+                          "background": "none",
+                          "strokeWidth": "0",
+                          "color": "#437ce5"
+                      }
+                  }
+              }
+          }
         }
     })
     vis.renderWithCypher("MATCH (n)-[r]->(m) RETURN *;")
@@ -118,8 +191,8 @@ defineExpose({
 
 <style scoped>
 .visualisation {
-  width: 700px;
-  height: 700px;
+  width: 80vw;
+  height: 60vh;
   font: 22pt arial;
 }
 </style>

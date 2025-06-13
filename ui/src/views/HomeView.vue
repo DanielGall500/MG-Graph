@@ -4,12 +4,6 @@ import GraphVis from '@/components/GraphVis.vue';
 import { useToast } from 'primevue/usetoast';
 import { Form } from '@primevue/forms';
 
-const selectedCity = ref();
-const sizeAlgorithms = ref([
-  { name: "Ermolaeva", code: "ERM" },
-  { name: "Simple", code: "SP" },
-]);
-const visible = ref(false);
 const mgTextValue = ref("");
 const mgSize = ref(0);
 const responseNotification = ref("");
@@ -26,6 +20,33 @@ const toast = useToast();
 
 const all_pathways = ref("");
 const shortest_pathways = ref("");
+
+// Minimum Description Length
+const mdl_alphabet_size = ref(26);
+const mdl_num_types = ref(7);
+
+const mdl_num_features = ref(0);
+const mdl_num_phonemes = ref(0);
+const mdl_enc_per_symbol = ref(0);
+
+const mdl_metrics = ref([
+    {
+        "metric": "Number of Phonemes",
+        "value": -1
+    },
+    {
+        "metric": "Number of Features",
+        "value": -1
+    },
+    {
+        "metric": "Encoding Cost Per Symbol",
+        "value": -1
+    },
+    {
+        "metric": "Size (bits)",
+        "value": -1
+    }
+])
 
 /* TODO: put these in one place */
 function showMessage(summary: string, detail: string, is_error: boolean) {
@@ -59,8 +80,8 @@ function setMGSize(size: number) {
     mgSize.value = size;
 }
 
-function reload() {
-    graph_vis.value.reload_vis();
+async function reload() {
+    await graph_vis.value.reload_vis();
 }
 
 const getMGJson = async () => {
@@ -88,16 +109,28 @@ const submitGrammar = async (): Promise<string> => {
             headers: {
             'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ grammar: mgTextValue.value }), // Send the grammar to the backend
+            body: JSON.stringify({ 
+                grammar: mgTextValue.value, 
+                alphabet_size: mdl_alphabet_size.value,
+                num_types: mdl_num_types.value
+            }), // Send the grammar to the backend
         });
         const data = await response.json();
 
         // update the frontend
         clearGrammarTextBox()
-        reload();
+        await reload();
 
         // set the updated values for grammar
-        setMGSize(data.size);
+        mdl_metrics.value[0]["value"] = data.size.n_phonemes;
+        mdl_metrics.value[1]["value"] = data.size.n_features;
+        mdl_metrics.value[2]["value"] = Math.round(data.size.encoding_cost_per_symbol);
+        mdl_metrics.value[3]["value"] = Math.round(data.size.mdl);
+        setMGSize(data.size.mdl);
+
+        /*
+        Next Step: Show other MDL bits
+        */
 
         get_pathways();
 
@@ -186,10 +219,14 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
         // const build_mg_data = await build_mg_response.json();
 
         const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { // Adjust the URL as necessary
-            method: 'GET',
+            method: 'POST',
             headers: {
             'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ 
+                alphabet_size: mdl_alphabet_size.value,
+                num_types: mdl_num_types.value
+            }), // Send the grammar to the backend
         });
         const size_data = await size_response.json();
         setMGSize(size_data.size);
@@ -201,7 +238,7 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
         getMGJson();
 
         showMessage("Success!", `Decomposition of ${affix} Successful.`, false);
-        reload();
+        await reload();
 
         return "Success!"
     } catch (error: any) {
@@ -228,10 +265,14 @@ const onCombineStates = async (): Promise<string> => {
         // const build_mg_data = await build_mg_response.json();
 
         const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { // Adjust the URL as necessary
-            method: 'GET',
+            method: 'POST',
             headers: {
             'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ 
+                alphabet_size: mdl_alphabet_size.value,
+                num_types: mdl_num_types.value
+            }), // Send the grammar to the backend
         });
         const size_data = await size_response.json();
         setMGSize(size_data.size);
@@ -243,7 +284,7 @@ const onCombineStates = async (): Promise<string> => {
         getMGJson();
 
         showMessage("Success!", `Combination Successful.`, false);
-        reload();
+        await reload();
 
         return "Success!"
     } catch (error: any) {
@@ -260,16 +301,7 @@ const onCombineStates = async (): Promise<string> => {
     <TabView class="z-20" @tab-change="reload" :active-index="activeTab">
         <!-- Editor Tab -->
         <TabPanel header="Editor" :activeIndex="activeTab">
-            <div class="flex justify-left items-start gap-4 p-3 border-round border-1 surface-border" style="justify-content: left;">
-                <div class="flex flex-column items-start gap-4 p-3 border-round border-1 surface-border">
-                    <label for="db-input" class="pb-1 mb-1 text-sm font-semibold">MG Input</label>
-                    <Textarea v-model="mgTextValue" autoResize rows="10" cols="50" />
-                        <div class="flex gap-3 mt-1" style="width: 30vw;">
-                            <Button label="Submit" class="w-full" @click="submitGrammar"/>
-                            <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
-                            <p>{{ responseNotification }}</p>
-                        </div>
-                </div>
+            <div class="flex items-start gap-4 p-3 border-round border-1 surface-border" style="justify-content: center;">
                 <div class="text-left" style="width: 40%;">
                     <h2>Grammar Input</h2>
                     <p class="flex-wrap m-0">
@@ -290,44 +322,162 @@ const onCombineStates = async (): Promise<string> => {
                         praise :: =d =d +k t;
                         <br><br>
                     </p>
+
+                    <h2>What is the size of an MG?</h2>
+                    <p>The size of an MG is measured using the Minimum Description Length. This can be defined as follows:</p>
+                    <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+                        <munder>
+                            <mo>∑</mo>
+                            <mrow>
+                            <mi>s</mi>
+                            <mo>::</mo>
+                            <mi>δ</mi>
+                            <mo>∈</mo>
+                            <mi>Lex</mi>
+                            </mrow>
+                        </munder>
+                        <mrow>
+                            <mo>(</mo>
+                            <mrow>
+                            <mo>|</mo><mi>s</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mn>2</mn><mo>×</mo><mo>|</mo><mi>δ</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mn>1</mn>
+                            </mrow>
+                            <mo>)</mo>
+                            <mo>×</mo>
+                            <mrow>
+                            <msub>
+                                <mi>log</mi>
+                                <mn>2</mn>
+                            </msub>
+                            <mo>(</mo>
+                            <mo>|</mo><mi>Σ</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mo>|</mo><mi>Types</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mo>|</mo><mi>Base</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mn>1</mn>
+                            <mo>)</mo>
+                            </mrow>
+                        </mrow>
+                        <mo>.</mo>
+                    </math>
+                    <p>We let |s| be the length of a given string and |δ| be the number of features.</p>
+                    <p>Types = {category, right selector, left selector, morphological selector, overt licensor, covert licensor, licensee}</p>
+                    <p>Σ is the set of characters in an alphabet, for instance in English this is equal to 26.</p>
+                    <p>|Base| is the total number of categories.</p>
+                    <p>The first part determines the total number of symbols used, while the second part determines the cost of encoding a symbol.</p>
+
+                </div>
+
+                <div class="flex flex-column items-start gap-4 p-3 border-round border-1 surface-border">
+                    <div class="flex flex-column">
+                        <h2>MG Builder</h2>
+                        <label class="flex-wrap m-0 pb-1 mb-1">
+                            Depending on the language you're parsing, you may need to adjust the alphabet size.
+                            <br>
+                            The default alphabet size is for English.
+                            <br>
+                            Types correspond to the standard for Lexical Decomposition.
+                        </label>
+                        <br>
+                        <div class="flex flex-row">
+                            <div class="flex flex-column" style="margin-right: 2vw; align-items: center;">
+                                <label class="mb-3 gap-3">|Σ|</label>
+                                <InputNumber v-model="mdl_alphabet_size" showButtons buttonLayout="vertical" style="width: 3rem" :min="0" :max="99">
+                                    <template #incrementbuttonicon>
+                                        <span class="pi pi-plus" />
+                                    </template>
+                                    <template #decrementbuttonicon>
+                                        <span class="pi pi-minus" />
+                                    </template>
+                                </InputNumber>
+                            </div>
+                            <div class="flex flex-column" style="margin-left: 2vw; align-items: center;">
+                                <label class="mb-3 gap-3">|Types|</label>
+                                <InputNumber v-model="mdl_num_types" showButtons buttonLayout="vertical" style="width: 3rem" :min="0" :max="99">
+                                    <template #incrementbuttonicon>
+                                        <span class="pi pi-plus" />
+                                    </template>
+                                    <template #decrementbuttonicon>
+                                        <span class="pi pi-minus" />
+                                    </template>
+                                </InputNumber>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="flex flex-column">
+                        <div class="flex flex-row">
+                        <Textarea v-model="mgTextValue" autoResize rows="15" cols="50" />
+                        </div>
+                        <div class="flex flex-row gap-3 mt-1" style="width: 30vw;">
+                            <Button label="Parse MG" class="w-full" @click="submitGrammar"/>
+                            <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
+                        </div>
+                    </div>
+
                 </div>
 
 
             </div>
 
             <div class="flex flex-column">
-                <div class="flex flex-row gap-4 mt-5 px-4" style="justify-content: left;">
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Visualisation</label>
+                <div class="flex flex-row" style="justify-content: center;">
+                    <Panel v-if="mgSize" class="flex flex-column gap-4 mt-5 px-4" style="padding-top: 5%;">
+                        <div>
+                            <h2 class="block font-semibold mb-2">MG => JSON</h2>
+                            <Textarea v-model="mgAsRawJson" rows="30" cols="50" class="w-full" style="resize: none;" />
+                        </div>
+                    </Panel>
+                    <Panel v-if="mgSize" class="flex flex-column gap-4 mt-5 px-4" style="padding-top: 5%;">
+                        <h2 class="block text-md font-semibold mb-2">Metrics & Pathways</h2>
+                        <br>
+                        <DataTable :value="mdl_metrics" tableStyle="min-width: 50rem">
+                            <Column field="metric" header="Metric"></Column>
+                            <Column field="value" header="Value"></Column>
+                        </DataTable>
+                        <br>
+
+                        <div class="p-grid p-gap-4">
+                            <div class="p-col-12 p-md-6" v-if="all_pathways && all_pathways.length">
+                            <Card>
+                                <template #title>All Pathways</template>
+                                <template #content>
+                                <ul class="p-m-0 p-pl-3">
+                                    <li v-for="(item, index) in all_pathways" :key="'all-' + index">
+                                    {{ item }}
+                                    </li>
+                                </ul>
+                                </template>
+                            </Card>
+                            </div>
+
+                            <div class="p-col-12 p-md-6" v-if="shortest_pathways && shortest_pathways.length">
+                            <Card>
+                                <template #title>Shortest Pathways</template>
+                                <template #content>
+                                <ul class="p-m-0 p-pl-3">
+                                    <li v-for="(item, index) in shortest_pathways" :key="'shortest-' + index">
+                                    {{ item }}
+                                    </li>
+                                </ul>
+                                </template>
+                            </Card>
+                            </div>
+                        </div>
+                    </Panel>
+                </div>
+                <div class="flex flex-row gap-4 mt-5 px-4" style="justify-content: center;">
+                    <Panel>
+                        <label class="block text-md font-semibold mb-2">Visualisation</label>
                         <GraphVis ref="graph_vis" />
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">MG Details</label>
-                        <label class="block text-sm font-semibold mb-2">Size: {{ Math.round(mgSize) }}</label>
-                        <Textarea v-model="mgAsRawJson" rows="30" cols="50" class="w-full" style="resize: none;" />
-                    </div>
-
+                    </Panel>
                 </div>
 
-                <Panel class="flex flex-column gap-4 mt-5 px-4" style="padding-top: 5%;">
-                    <div>
-                        <h2>All Pathways</h2>
-                        <ul>
-                            <li v-for="(item, index) in all_pathways" :key="index">
-                                {{ item }}
-                            </li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h2>Shortest Pathways</h2>
-                        <ul>
-                            <li v-for="(item, index) in shortest_pathways" :key="index">
-                                {{ item }}
-                            </li>
-                        </ul>
-                    </div>
-                </Panel>
             </div>
 
 

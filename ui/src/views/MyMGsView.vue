@@ -84,6 +84,27 @@ async function saveGrammar() {
     }
 }
 
+async function deleteGrammar(i: number) {
+    try {
+        const response = await fetch('http://127.0.0.1:8000/delete-mg', { // Adjust the URL as necessary
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                index: i
+            }), 
+        });
+
+        const result = await response.text();
+        await loadText();
+        showMessage("MG Deleted", "MG has been deleted.", false);
+    }
+    catch (error) {
+        showMessage("MG Couldn't Be Deleted", "There appears to be a local server issue.", true);
+    }
+}
+
 async function loadText() {
     try {
         const response = await fetch('http://127.0.0.1:8000/load-mg-collection', { // Adjust the URL as necessary
@@ -129,12 +150,14 @@ onMounted(() => {
             </template>
 
             <template #subtitle>
-                <div class="text-sm text-gray-500">{{ grammar.lang }}</div>
+                <div class="btn-sm text-sm text-gray-500">{{ grammar.lang }}</div>
             </template>
 
             <template #content>
                 <div v-for="(line, i) in grammar.grammar" :key="i" class="text-sm text-gray-500">{{ line }} <br> </div>
-            </template>
+                <br><br>
+                <Button @click="deleteGrammar(index)" size="small" icon="pi pi-times" severity="danger" variant="text" raised rounded aria-label="Cancel"/>
+           </template>
             </Card>
         </div>
 
