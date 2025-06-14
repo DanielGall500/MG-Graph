@@ -18,6 +18,9 @@ const mgAsRawJson = ref("");
 
 const toast = useToast();
 
+// Pathways
+const path_start_node = ref("d");
+const path_end_node = ref("t");
 const all_pathways = ref("");
 const shortest_pathways = ref("");
 
@@ -132,9 +135,9 @@ const submitGrammar = async (): Promise<string> => {
         Next Step: Show other MDL bits
         */
 
-        get_pathways();
+        await get_pathways();
 
-        getMGJson();
+        await getMGJson();
 
         showMessage("Success!", "Grammar successfully submitted.", false);
         return "Success!";
@@ -175,10 +178,14 @@ const get_suggestions = async(): Promise<string> => {
 const get_pathways = async(): Promise<string> => {
     try {
         const response = await fetch('http://127.0.0.1:8000/pathways', { 
-            method: 'GET',
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+                start_item: path_start_node.value,
+                end_item: path_end_node.value,
+            }),
         });
 
         // Check if the response is OK and the body is not empty
@@ -235,6 +242,7 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
         // update the frontend
         decomp_suggestions.value = [];
 
+        await get_pathways();
         getMGJson();
 
         showMessage("Success!", `Decomposition of ${affix} Successful.`, false);
@@ -281,6 +289,7 @@ const onCombineStates = async (): Promise<string> => {
         // update the frontend
         decomp_suggestions.value = [];
 
+        await get_pathways();
         getMGJson();
 
         showMessage("Success!", `Combination Successful.`, false);
@@ -407,7 +416,16 @@ const onCombineStates = async (): Promise<string> => {
                                     </template>
                                 </InputNumber>
                             </div>
-
+                            <div class="flex flex-column" style="justify-content: center; margin-left: 4vw;">
+                                    <div class="flex flex-column" style="margin-bottom: 2vh; align-items: center;justify-content: center;;">
+                                        <label for="over_label" >Start Item</label>
+                                        <InputText class="w-5rem" id="over_label" v-model="path_start_node" />
+                                    </div>
+                                    <div class="flex flex-column" style="align-items: center; justify-content: left;">
+                                        <label for="over_label" >End Item</label>
+                                        <InputText class="w-5rem" id="over_label" v-model="path_end_node" />
+                                    </div>
+                            </div>
                         </div>
                     </div>
                     <div class="flex flex-column">
@@ -443,30 +461,24 @@ const onCombineStates = async (): Promise<string> => {
                         <br>
 
                         <div class="p-grid p-gap-4">
+                            <h2 class="block text-md font-semibold mb-2">All Pathways</h2>
+                            <br>
                             <div class="p-col-12 p-md-6" v-if="all_pathways && all_pathways.length">
-                            <Card>
-                                <template #title>All Pathways</template>
-                                <template #content>
                                 <ul class="p-m-0 p-pl-3">
                                     <li v-for="(item, index) in all_pathways" :key="'all-' + index">
-                                    {{ item }}
+                                        {{ path_start_node }} => {{ item }} => {{ path_end_node }}
                                     </li>
                                 </ul>
-                                </template>
-                            </Card>
                             </div>
 
+                            <h2 class="block text-md font-semibold mb-2">Shortest Pathways</h2>
+                            <br>
                             <div class="p-col-12 p-md-6" v-if="shortest_pathways && shortest_pathways.length">
-                            <Card>
-                                <template #title>Shortest Pathways</template>
-                                <template #content>
                                 <ul class="p-m-0 p-pl-3">
                                     <li v-for="(item, index) in shortest_pathways" :key="'shortest-' + index">
-                                    {{ item }}
+                                        {{ path_start_node }} => {{ item }} => {{ path_end_node }}
                                     </li>
                                 </ul>
-                                </template>
-                            </Card>
                             </div>
                         </div>
                     </Panel>

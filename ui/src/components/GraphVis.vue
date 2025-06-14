@@ -121,7 +121,7 @@ async function reload_vis() {
                     color: {
                         background: (node) => node.properties.CVE_ID ? "#bd6962" : node.properties.CWE_ID ? "#a4cbfa" : node.properties.PUBLISH_DATE ? "#f7ce46" : "#a4cb9d",
                     },
-                    title: (node) => NeoVis.objectToTitleString(node, ["CVE_ID", "YEAR", "CWE_ID", "CAUSE", "LOCATION", "VERSION", "ATTACKER", "CONSEQUENCE", "OPERATION"])
+                    label: (node) => NeoVis.objectToTitleString(node, ["name","move"])
                 }
             }
           },
@@ -152,27 +152,28 @@ async function reload_vis() {
                         background: (node) => node.properties.CVE_ID ? "#b833ff" : node.properties.CWE_ID ? "#b833ff" : node.properties.PUBLISH_DATE ? "#b833ff" : "#b833ff",
                         // background: (node) => node.properties.move == "-k" ? "#f7ce46" : "#a4cb9d",
                     },
-                    title: (node) => NeoVis.objectToTitleString(node, ["CVE_ID", "YEAR", "CWE_ID", "CAUSE", "LOCATION", "VERSION", "ATTACKER", "CONSEQUENCE", "OPERATION"])
+                    label: (node) => NeoVis.objectToTitleString(node, ["name","move"])
                 }
             }
           }
         },
         relationships: {
-            'Merge': {
-              label: "li",
-              [NeoVis.NEOVIS_ADVANCED_CONFIG]: {
-                  static: {
-                      label: "li",
-                      color: "#64b687",
-                      font: {
-                          "background": "none",
-                          "strokeWidth": "0",
-                          "color": "#437ce5"
-                      }
-                  }
-              }
-          }
+        'Merge': {
+            [NeoVis.NEOVIS_ADVANCED_CONFIG]: {
+                static: {
+                    color: "#64b687",
+                    font: {
+                        background: "none",
+                        strokeWidth: "0",
+                        color: "#000000"
+                    }
+                },
+                function: {
+                    label: (edge) => NeoVis.objectToTitleString(edge, ["li", "move"])
+                }
+            }
         }
+    }
     })
     vis.renderWithCypher("MATCH (n)-[r]->(m) RETURN *;")
 
