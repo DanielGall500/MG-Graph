@@ -99,6 +99,10 @@ async fn update_grammar_graph(data: &web::Data<MGState>) {
                 Ok(_g) => println!("Graph updated successfully."),
                 Err(e) => println!("Problem updating graph: {}", e)
             }
+
+            if let Err(e) = db.remove_redundancy().await {
+                println!("Couldn't remove redundancy.");
+            }
     
         }
     }
@@ -261,13 +265,18 @@ struct PathwayResponse {
     all_pathways: Vec<String>,
     shortest_pathways: Vec<String>,
 }
-#[get("/pathways")]
-async fn pathways(data: web::Data<MGState>) -> HttpResponse {
+#[derive(Serialize, Deserialize)]
+struct PathwayInput {
+    start_item: String,
+    end_item: String
+}
+#[post("/pathways")]
+async fn pathways(data: web::Data<MGState>, input: web::Json<PathwayInput>) -> HttpResponse {
     let graph_guard = data.graph_db.read().await;
 
     if let Some(graph) = graph_guard.as_ref() {
-        let poss_paths = graph.get_possible_paths().await.unwrap();
-        let shortest_paths = graph.get_shortest_paths().await.unwrap();
+        let poss_paths = graph.get_possible_paths(&input.start_item, &input.end_item).await.unwrap();
+        let shortest_paths = graph.get_shortest_paths(&input.start_item, &input.end_item).await.unwrap();
         let response: PathwayResponse = PathwayResponse {
             all_pathways: poss_paths,
             shortest_pathways: shortest_paths,

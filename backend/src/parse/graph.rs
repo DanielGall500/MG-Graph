@@ -272,16 +272,12 @@ impl GrammarGraph {
         Ok(())
     }
 
-    pub async fn get_possible_paths(&self) -> Result<Vec<String>, neo4rs::Error> {
-        let start_state: &str = "d";
-        let end_state: &str = "t";
-        Ok(self.base.get_possible_paths(start_state,end_state).await)
+    pub async fn get_possible_paths(&self, start_item: &str, end_item: &str) -> Result<Vec<String>, neo4rs::Error> {
+        Ok(self.base.get_possible_paths(start_item, end_item).await)
     }
 
-    pub async fn get_shortest_paths(&self) -> Result<Vec<String>, neo4rs::Error> {
-        let start_state: &str = "d";
-        let end_state: &str = "t";
-        Ok(self.base.get_shortest_paths(start_state,end_state).await)
+    pub async fn get_shortest_paths(&self, start_item: &str, end_item: &str) -> Result<Vec<String>, neo4rs::Error> {
+        Ok(self.base.get_shortest_paths(start_item, end_item).await)
     }
 
     pub async fn clear(&self) -> Result<(), neo4rs::Error> {
