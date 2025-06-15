@@ -121,7 +121,10 @@ async function reload_vis() {
                     color: {
                         background: (node) => node.properties.CVE_ID ? "#bd6962" : node.properties.CWE_ID ? "#a4cbfa" : node.properties.PUBLISH_DATE ? "#f7ce46" : "#a4cb9d",
                     },
-                    label: (node) => NeoVis.objectToTitleString(node, ["name","move"])
+                    label: (node) => NeoVis.objectToTitleString(node, ["name","move"]).trim() // Remove leading/trailing newlines
+                        .split('\n') // Split by line
+                        .map(line => line.split(':')[1]?.trim() || '') // Get content after ':', or empty string
+                        .join('\n'), // Join back into multi-line string
                 }
             }
           },
@@ -153,6 +156,10 @@ async function reload_vis() {
                         // background: (node) => node.properties.move == "-k" ? "#f7ce46" : "#a4cb9d",
                     },
                     label: (node) => NeoVis.objectToTitleString(node, ["name","move"])
+                        .trim()
+                        .split('\n') // Split by line
+                        .map(line => line.split(':')[1]?.trim() || '') // Get content after ':', or empty string
+                        .join('\n'), // Join back into multi-line string
                 }
             }
           }
@@ -170,6 +177,10 @@ async function reload_vis() {
                 },
                 function: {
                     label: (edge) => NeoVis.objectToTitleString(edge, ["li", "move"])
+                        .trim()
+                        .split('\n') // Split by line
+                        .map(line => line.split(':')[1]?.trim() || '') // Get content after ':', or empty string
+                        .join('\n'), // Join back into multi-line string
                 }
             }
         }

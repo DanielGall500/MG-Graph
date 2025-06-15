@@ -11,6 +11,7 @@ const activeTab = ref(0);
 const graph_vis = ref();
 const decomp_suggestions = ref();
 const loading_decomp_suggestions = ref(false);
+
 const state_a_combine = ref("");
 const state_b_combine = ref("");
 
@@ -257,9 +258,10 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
 }
 
 const onCombineStates = async (): Promise<string> => {
+    showInfoMessage("Combining states..", "Attempting two combine the two given states.");
     try {
         // communicate with backend MG API
-        const build_mg_response = await fetch('http://127.0.0.1:8000/combine', { // Adjust the URL as necessary
+        const response = await fetch('http://127.0.0.1:8000/combine', { 
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
@@ -270,9 +272,16 @@ const onCombineStates = async (): Promise<string> => {
              }), 
         });
 
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Server Error:', errorData.error);
+            showMessage("Combine States Failed", errorData.error, true);
+            return "Failed"
+        }
+
         // const build_mg_data = await build_mg_response.json();
 
-        const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { // Adjust the URL as necessary
+        const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { 
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
@@ -298,7 +307,7 @@ const onCombineStates = async (): Promise<string> => {
         return "Success!"
     } catch (error: any) {
         console.error('Error:', error);
-        showMessage("Error!", `Combination Failed.`, true);
+        showMessage("Error!", error, true);
         return "Failed."
     }
 }
@@ -527,7 +536,6 @@ const onCombineStates = async (): Promise<string> => {
                         <h2>Combine States Manually</h2>
                         <br>
                         <div class="flex flex-column">
-                            <Form v-slot="$form" @submit="onCombineStates" class="p-fluid flex flex-row gap-4 sm:w-56">
                             <!-- State A & B Inputs -->
                             <div class="p-fluid flex flex-row grid gap-2 mb-4">
                                 <div class="">
@@ -537,18 +545,7 @@ const onCombineStates = async (): Promise<string> => {
                                     <InputText v-model="state_b_combine" placeholder="State B" />
                                 </div>
                             </div>
-                            <div>
-                                <Message
-                                v-if="$form.username?.invalid"
-                                severity="error"
-                                size="small"
-                                class="mt-1"
-                                :closable="false"
-                                >{{ $form.username.error?.message }}</Message
-                                >
-                            </div>
-                            </Form>
-                            <Button class="col-1" type="submit" severity="secondary" label="Combine States" />
+                            <Button class="col-1" @click="onCombineStates" type="submit" severity="secondary" label="Combine States" />
                         </div>
                     </div>
 
