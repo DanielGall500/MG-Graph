@@ -1,3 +1,4 @@
+use actix_web::body;
 // src/main.rs
 use actix_web::{get, web, App, post, 
     HttpResponse, HttpServer, Responder, 
@@ -162,17 +163,69 @@ async fn build_initial_mg(data: web::Data<MGState>, input: web::Json<GrammarInpu
 
 #[derive(Deserialize)]
 struct CombinationInput {
-    _state_a: String,
-    _state_b: String,
+    state_a: String,
+    state_b: String,
+}
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: String,
 }
 #[post("/combine")]
-async fn combine(data: web::Data<MGState>, _input: web::Json<CombinationInput>) -> HttpResponse {
-    let mut _mg_parser = data.mg_parser.lock().await;
-    /*
-    Should combine two states.
-     */
-    HttpResponse::Ok().into()
+async fn combine(
+    data: web::Data<MGState>,
+    _input: web::Json<CombinationInput>,
+) -> HttpResponse {
+    println!("--> combine handler called");
+
+    let graph_guard = data.graph_db.read().await;
+    println!("--> graph lock acquired");
+
+    if let Some(graph) = graph_guard.as_ref() {
+        println!("--> graph is Some");
+
+        if let Err(e) = graph.contract_edge(
+            &_input.state_a,
+            &_input.state_b,
+        ).await {
+            eprintln!("!!! contract_edge failed: {:?}", e);
+            return HttpResponse::InternalServerError().json(ErrorResponse {
+                error: format!("Contracting failed: {}", e),
+            });
+        }
+
+        println!("--> contract_edge succeeded");
+        return HttpResponse::Ok().json(serde_json::json!({
+            "message": "contracted successfully"
+        }));
+    } else {
+        println!("!!! graph is None");
+        return HttpResponse::InternalServerError().json(ErrorResponse {
+            error: "Graph not initialized".into(),
+        });
+    }
 }
+
+/* 
+#[post("/combine")]
+async fn combine(data: web::Data<MGState>, _input: web::Json<CombinationInput>) -> HttpResponse {
+    let graph_guard = data.graph_db.read().await;
+
+    if let Some(graph) = graph_guard.as_ref() {
+        if let Err(e) = graph.contract_edge(
+            &_input.state_a, 
+            &_input.state_b, 
+            &_input._li).await {
+            eprintln!("Error: {}", e);
+            let err_response = ErrorResponse {
+                error: format!("Contracting failed: {}", e),
+            };
+            return HttpResponse::InternalServerError().json(err_response);
+        }
+    }
+    
+    HttpResponse::Ok().finish()
+}
+    */
 
 
 /*

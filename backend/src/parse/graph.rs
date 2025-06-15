@@ -116,6 +116,24 @@ impl GeneralGraph {
         Ok(())
     }
 
+    pub async fn contract_edge(&self, node_a_label: &str, node_b_label: &str) -> Result<(), Box<dyn Error>> {
+        let contract_edge = self.queries.get_contract_edge(node_a_label, node_b_label);
+        self.run(&contract_edge.query).await?;
+        Ok(())
+    }
+
+    pub async fn switch_edge_origin(&self, node_label_prev_origin: &str, node_label_new_origin: &str) -> Result<(), Box<dyn Error>> {
+        let switch_edge_origin = self.queries.get_switch_edge_origin(node_label_prev_origin, node_label_new_origin);
+        self.run(&switch_edge_origin.query).await?;
+        Ok(())
+    }
+
+    pub async fn switch_edge_endpoint(&self, node_label_prev_endpoint: &str, node_label_new_endpoint: &str) -> Result<(), Box<dyn Error>> {
+        let switch_edge_endpoint = self.queries.get_switch_edge_endpoint(node_label_prev_endpoint, node_label_new_endpoint);
+        self.run(&switch_edge_endpoint.query).await?;
+        Ok(())
+    }
+
     pub async fn get_possible_paths(&self, start_state: &str, end_state: &str) -> 
     // Result<Vec<HashMap<String,Vec<String>>>, neo4rs::Error> {
     Vec<String> {
@@ -234,41 +252,52 @@ impl GrammarGraph {
         Ok(())
     }
 
+    /*
+    The below code should be far improved for SOC
+    */
     #[allow(dead_code)]
-    pub async fn contract_edge<'a>(&self, edge: &Relationship) -> Result<(), Box<dyn Error>> {
-        let new_node_id = format!("{}-{}", edge.node_a.label, edge.node_b.label);
-        let contract_edge_query = format!(
-            "MATCH (a:State {{ name: '{}' }})-[e:MERGE {{ li: \'{}\' }}]->(b:State {{ name: '{}' }})
-                WITH a, b, e
-                CREATE (merged:State {{ name: '{}' }})
-                DELETE e", 
-            &edge.node_a.label, &edge.li, &edge.node_b.label, &new_node_id);
+    pub async fn contract_edge<'a>(&self, node_a: &str, node_b: &str) -> Result<(), Box<dyn Error>> {
+        let mut basic_rel_props : HashMap<String, String> = HashMap::new();
+        basic_rel_props.insert(String::from("move"), String::from(""));
+        let rel: Relationship = Relationship {
+            node_a: Node {
+                state_type: String::from("State"),
+                label: node_a.to_string(),
+                props: None
+            },
+            node_b: Node {
+                state_type: String::from("State"),
+                label: node_b.to_string(),
+                props: None
+            },
+            li: String::from(""),
+            props: basic_rel_props,
+        };
+        let new_node_label = format!("{}-{}", rel.node_a.label, rel.node_b.label);
+        self.base.contract_edge(node_a, node_b).await
+           .map_err(|e| format!("contract_edge failed: {}", e))?;
+        self.base.create_node(Node {
+            state_type: String::from("State"),
+            label: new_node_label.clone(),
+            props: None
+        }).await
+            .map_err(|e| format!("create new node failed: {}", e))?;
 
-        println!("Query: {}", contract_edge_query);
-        self.base.graph.run(query(contract_edge_query.as_str())).await?;
+        self.base.switch_edge_origin(node_a, &new_node_label).await
+            .map_err(|e| format!("switch edge origin A failed: {}", e))?;
+        self.base.switch_edge_endpoint(node_a, &new_node_label).await
+            .map_err(|e| format!("switch edge endpoint A failed: {}", e))?;
 
-        let reassign_relationships_from_new_node = format!(
-            "MATCH (a)-[r:MERGE]->(b)
-            WHERE a.name = '{}' OR a.name = '{}' 
-            WITH a, b, r
-            MATCH (n {{ name: '{}' }})
-            CREATE (n)-[newRel: MERGE {{ li: r.li }}]->(b)", 
-            &edge.node_a.label.as_str(), &edge.node_b.label.as_str(), &new_node_id);
-        println!("Query: {}", reassign_relationships_from_new_node);
-        self.base.graph.run(query(reassign_relationships_from_new_node.as_str())).await?;
+        self.base.switch_edge_origin(node_b, &new_node_label).await
+            .map_err(|e| format!("switch edge origin B failed: {}", e))?;
+        self.base.switch_edge_endpoint(node_b, &new_node_label).await
+            .map_err(|e| format!("switch edge endpoint B failed: {}", e))?;
 
-        let reassign_relationships_to_new_node = format!(
-            "MATCH (a)-[r:MERGE]->(b)
-            WHERE b.name = '{}' OR b.name = '{}' 
-            WITH a, b, r
-            MATCH (n {{ name: '{}' }})
-            CREATE (a)-[newRel: MERGE {{ li: r.li }}]->(n)", 
-            &edge.node_a.label.as_str(), &edge.node_b.label.as_str(), &new_node_id);
-        println!("Query: {}", reassign_relationships_to_new_node);
-        self.base.graph.run(query(reassign_relationships_to_new_node.as_str())).await?;
+        self.base.delete_node(rel.node_a.clone()).await
+            .map_err(|e| format!("delete node A failed: {}", e))?;
 
-        self.base.delete_node(edge.node_a.clone()).await?;
-        self.base.delete_node(edge.node_b.clone()).await?;
+        self.base.delete_node(rel.node_b.clone()).await
+            .map_err(|e| format!("delete node B failed: {}", e))?;
         Ok(())
     }
 

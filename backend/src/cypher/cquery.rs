@@ -80,7 +80,44 @@ impl CQueryStorage {
             name: q.name.clone(),
             query: q.query
                 .replace("{TYPE}", n.state_type.as_str())
+                .replace("{NODE_LABEL_KEY}", "name")
                 .replace("{NODE_LABEL_VAL}", n.label.as_str()),
+            desc: q.desc.clone()
+        }
+    }
+
+    pub fn get_contract_edge(&self, node_a_label: &str, node_b_label: &str) -> CQuery {
+        const Q_ID: &str = "contract_edge";
+        let q = self.get_query(Q_ID);
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{NODE_A_LABEL_VAL}", node_a_label)
+                .replace("{NODE_B_LABEL_VAL}", node_b_label),
+            desc: q.desc.clone()
+        }
+    }
+
+    pub fn get_switch_edge_origin(&self, node_label_prev_origin: &str, node_label_new_origin: &str) -> CQuery {
+        const Q_ID: &str = "switch_edge_origin";
+        let q = self.get_query(Q_ID);
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{NODE_LABEL_PREV_ORIGIN}", node_label_prev_origin)
+                .replace("{NODE_LABEL_NEW_ORIGIN}", node_label_new_origin),
+            desc: q.desc.clone()
+        }
+    }
+
+    pub fn get_switch_edge_endpoint(&self, node_label_prev_endpoint: &str, node_label_new_endpoint: &str) -> CQuery {
+        const Q_ID: &str = "switch_edge_endpoint";
+        let q = self.get_query(Q_ID);
+        CQuery { 
+            name: q.name.clone(),
+            query: q.query
+                .replace("{NODE_LABEL_PREV_ENDPOINT}", node_label_prev_endpoint)
+                .replace("{NODE_LABEL_NEW_ENDPOINT}", node_label_new_endpoint),
             desc: q.desc.clone()
         }
     }
@@ -218,7 +255,6 @@ pub fn load_queries_from_json(queries: &str) -> Result<HashMap<String, CQuery>, 
         }
     }
     else {
-        println!("Just straight up dint work");
     }
     Ok(queries)
 }
