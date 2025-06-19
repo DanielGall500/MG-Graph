@@ -3,10 +3,15 @@
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
   "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {
+    "target": "es2022",            // Ensure ES2022 or later for import.meta support
+    "moduleResolution": "Node",    // Ensure Node-style resolution
+    "lib": ["ESNext", "DOM"],      // Allow access to modern JavaScript and the DOM
+    "types": ["vite/client"],      // Ensure vite types are loaded
+    "skipLibCheck": true,          // Avoid issues with third-party declarations
     "composite": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
   }
 }

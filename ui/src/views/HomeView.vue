@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import GraphVis from '@/components/GraphVis.vue'
+import GraphVis from '@/components/GraphVis.vue';
 import { useToast } from 'primevue/usetoast';
 import { Form } from '@primevue/forms';
 
-const selectedCity = ref();
-const sizeAlgorithms = ref([
-  { name: "Ermolaeva", code: "ERM" },
-  { name: "Simple", code: "SP" },
-]);
-const visible = ref(false);
 const mgTextValue = ref("");
 const mgSize = ref(0);
 const responseNotification = ref("");
@@ -17,10 +11,48 @@ const activeTab = ref(0);
 const graph_vis = ref();
 const decomp_suggestions = ref();
 const loading_decomp_suggestions = ref(false);
+
 const state_a_combine = ref("");
 const state_b_combine = ref("");
+
+const mgAsRawJson = ref("");
+
 const toast = useToast();
 
+// Pathways
+const path_start_node = ref("d");
+const path_end_node = ref("t");
+const all_pathways = ref("");
+const shortest_pathways = ref("");
+
+// Minimum Description Length
+const mdl_alphabet_size = ref(26);
+const mdl_num_types = ref(7);
+
+const mdl_num_features = ref(0);
+const mdl_num_phonemes = ref(0);
+const mdl_enc_per_symbol = ref(0);
+
+const mdl_metrics = ref([
+    {
+        "metric": "Number of Phonemes",
+        "value": -1
+    },
+    {
+        "metric": "Number of Features",
+        "value": -1
+    },
+    {
+        "metric": "Encoding Cost Per Symbol",
+        "value": -1
+    },
+    {
+        "metric": "Size (bits)",
+        "value": -1
+    }
+])
+
+/* TODO: put these in one place */
 function showMessage(summary: string, detail: string, is_error: boolean) {
     const sev = is_error ? "error" : "success";
     toast.add({
@@ -30,6 +62,15 @@ function showMessage(summary: string, detail: string, is_error: boolean) {
         life: 3000 // Display time in milliseconds
     });
 };
+
+function showInfoMessage(summary: string, detail: string) {
+    toast.add({
+        severity: "info",  
+        summary: summary,
+        detail: detail,
+        life: 5000 // Display time in milliseconds
+    });
+}
 
 function setGrammarTextBox(grammar: string) {
     mgTextValue.value = grammar;
@@ -43,15 +84,28 @@ function setMGSize(size: number) {
     mgSize.value = size;
 }
 
-function switchTab(tab: number) {
-    activeTab.value = tab;
+async function reload() {
+    await graph_vis.value.reload_vis();
 }
 
-function reload() {
-    graph_vis.value.reload_vis();
+const getMGJson = async () => {
+    const response = await fetch('http://127.0.0.1:8000/get-mg-json', { // Adjust the URL as necessary
+        method: 'GET',
+        headers: {
+        'Content-Type': 'application/json',
+        },
+    });
+    if (response.ok) {
+        const data = await response.text();
+        mgAsRawJson.value = data;
+    }
+    else {
+        showMessage("Unable to Retrieve JSON", "The MG in JSON format could not be shown.", true);
+    }
 }
 
 const submitGrammar = async (): Promise<string> => {
+    showInfoMessage("Processing MG...", "This may take a minute.");
     try {
         // communicate with backend MG API
         const response = await fetch('http://127.0.0.1:8000/build-initial-mg', { // Adjust the URL as necessary
@@ -59,17 +113,33 @@ const submitGrammar = async (): Promise<string> => {
             headers: {
             'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ grammar: mgTextValue.value }), // Send the grammar to the backend
+            body: JSON.stringify({ 
+                grammar: mgTextValue.value, 
+                alphabet_size: mdl_alphabet_size.value,
+                num_types: mdl_num_types.value
+            }), // Send the grammar to the backend
         });
         const data = await response.json();
 
         // update the frontend
         clearGrammarTextBox()
-        switchTab(2);
-        reload();
+        await reload();
 
         // set the updated values for grammar
-        setMGSize(data.size);
+        mdl_metrics.value[0]["value"] = data.size.n_phonemes;
+        mdl_metrics.value[1]["value"] = data.size.n_features;
+        mdl_metrics.value[2]["value"] = Math.round(data.size.encoding_cost_per_symbol);
+        mdl_metrics.value[3]["value"] = Math.round(data.size.mdl);
+        setMGSize(data.size.mdl);
+
+        /*
+        Next Step: Show other MDL bits
+        */
+
+        await get_pathways();
+
+        await getMGJson();
+
         showMessage("Success!", "Grammar successfully submitted.", false);
         return "Success!";
     } catch (error: any) {
@@ -106,6 +176,41 @@ const get_suggestions = async(): Promise<string> => {
     }
 }
 
+const get_pathways = async(): Promise<string> => {
+    try {
+        const response = await fetch('http://127.0.0.1:8000/pathways', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                start_item: path_start_node.value,
+                end_item: path_end_node.value,
+            }),
+        });
+
+        // Check if the response is OK and the body is not empty
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json(); // Get the raw response text
+        if (response.ok && data) {
+            // const data = JSON.parse(responseText); // Parse it manually
+            all_pathways.value = data.all_pathways;
+            shortest_pathways.value = data.shortest_pathways;
+            showMessage("Pathways Found!", "Pathways successfully found.", false);
+            return "Pathways found!";
+        } else {
+            throw new Error("Empty response body");
+        }
+        
+    } catch (error: any) {
+        showMessage("Pathways Error!", error.message || error, true);
+        return "No Suggestions Found";
+    }
+}
+
 const decompose = async (event: any, affix: any, li_vec: any): Promise<string> => {
     try {
         // communicate with backend MG API
@@ -122,10 +227,14 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
         // const build_mg_data = await build_mg_response.json();
 
         const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { // Adjust the URL as necessary
-            method: 'GET',
+            method: 'POST',
             headers: {
             'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ 
+                alphabet_size: mdl_alphabet_size.value,
+                num_types: mdl_num_types.value
+            }), // Send the grammar to the backend
         });
         const size_data = await size_response.json();
         setMGSize(size_data.size);
@@ -133,9 +242,12 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
 
         // update the frontend
         decomp_suggestions.value = [];
+
+        await get_pathways();
+        getMGJson();
+
         showMessage("Success!", `Decomposition of ${affix} Successful.`, false);
-        switchTab(2);
-        reload();
+        await reload();
 
         return "Success!"
     } catch (error: any) {
@@ -146,9 +258,10 @@ const decompose = async (event: any, affix: any, li_vec: any): Promise<string> =
 }
 
 const onCombineStates = async (): Promise<string> => {
+    showInfoMessage("Combining states..", "Attempting two combine the two given states.");
     try {
         // communicate with backend MG API
-        const build_mg_response = await fetch('http://127.0.0.1:8000/combine', { // Adjust the URL as necessary
+        const response = await fetch('http://127.0.0.1:8000/combine', { 
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
@@ -159,13 +272,24 @@ const onCombineStates = async (): Promise<string> => {
              }), 
         });
 
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Server Error:', errorData.error);
+            showMessage("Combine States Failed", errorData.error, true);
+            return "Failed"
+        }
+
         // const build_mg_data = await build_mg_response.json();
 
-        const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { // Adjust the URL as necessary
-            method: 'GET',
+        const size_response = await fetch('http://127.0.0.1:8000/calculate-size', { 
+            method: 'POST',
             headers: {
             'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ 
+                alphabet_size: mdl_alphabet_size.value,
+                num_types: mdl_num_types.value
+            }), // Send the grammar to the backend
         });
         const size_data = await size_response.json();
         setMGSize(size_data.size);
@@ -173,94 +297,33 @@ const onCombineStates = async (): Promise<string> => {
 
         // update the frontend
         decomp_suggestions.value = [];
+
+        await get_pathways();
+        getMGJson();
+
         showMessage("Success!", `Combination Successful.`, false);
-        switchTab(2);
-        reload();
+        await reload();
 
         return "Success!"
     } catch (error: any) {
         console.error('Error:', error);
-        showMessage("Error!", `Combination Failed.`, true);
+        showMessage("Error!", error, true);
         return "Failed."
     }
 }
 </script>
 
 <template>
-  <div class="flex flex-wrap">
+  <div class="z-20 flex flex-wrap">
   <Toast />
-  <div class="card flex justify-content-left">
-          <div class="flex flex-column h-full">
-              <div class="flex align-items-center justify-content-between px-4 pt-3 flex-shrink-0">
-                  <span class="inline-flex align-items-center gap-2">
-                      <svg width="35" height="40" viewBox="0 0 35 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path
-                              d="M25.87 18.05L23.16 17.45L25.27 20.46V29.78L32.49 23.76V13.53L29.18 14.73L25.87 18.04V18.05ZM25.27 35.49L29.18 31.58V27.67L25.27 30.98V35.49ZM20.16 17.14H20.03H20.17H20.16ZM30.1 5.19L34.89 4.81L33.08 12.33L24.1 15.67L30.08 5.2L30.1 5.19ZM5.72 14.74L2.41 13.54V23.77L9.63 29.79V20.47L11.74 17.46L9.03 18.06L5.72 14.75V14.74ZM9.63 30.98L5.72 27.67V31.58L9.63 35.49V30.98ZM4.8 5.2L10.78 15.67L1.81 12.33L0 4.81L4.79 5.19L4.8 5.2ZM24.37 21.05V34.59L22.56 37.29L20.46 39.4H14.44L12.34 37.29L10.53 34.59V21.05L12.42 18.23L17.45 26.8L22.48 18.23L24.37 21.05ZM22.85 0L22.57 0.69L17.45 13.08L12.33 0.69L12.05 0H22.85Z"
-                              fill="var(--primary-color)"
-                          />
-                          <path
-                              d="M30.69 4.21L24.37 4.81L22.57 0.69L22.86 0H26.48L30.69 4.21ZM23.75 5.67L22.66 3.08L18.05 14.24V17.14H19.7H20.03H20.16H20.2L24.1 15.7L30.11 5.19L23.75 5.67ZM4.21002 4.21L10.53 4.81L12.33 0.69L12.05 0H8.43002L4.22002 4.21H4.21002ZM21.9 17.4L20.6 18.2H14.3L13 17.4L12.4 18.2L12.42 18.23L17.45 26.8L22.48 18.23L22.5 18.2L21.9 17.4ZM4.79002 5.19L10.8 15.7L14.7 17.14H14.74H15.2H16.85V14.24L12.24 3.09L11.15 5.68L4.79002 5.2V5.19Z"
-                              fill="var(--text-color)"
-                          />
-                      </svg>
-                      <span class="font-semibold text-2xl text-primary">MG-Graph</span>
-                  </span>
-                  <span>
-                      <Button type="button" @click="visible = false" icon="pi pi-times" rounded outlined class="h-2rem w-2rem"></Button>
-                  </span>
-              </div>
-              <div class="overflow-y-auto">
-                  <ul class="list-none p-3 m-0">
-                      <li>
-                          <ul class="list-none p-0 m-0 overflow-hidden">
-                              <li>
-                                  <a v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
-                                      <i class="pi pi-home mr-2"></i>
-                                      <span class="font-medium">Dashboard</span>
-                                  </a>
-                              </li>
-                              <li>
-                                  <a v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
-                                      <i class="pi pi-bookmark mr-2"></i>
-                                      <span class="font-medium">Examples</span>
-                                  </a>
-                              </li>
-                              <li>
-                                  <a v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
-                                      <i class="pi pi-users mr-2"></i>
-                                      <span class="font-medium">Saved Minimalist Grammars</span>
-                                  </a>
-                              </li>
-                              <li>
-                                  <a v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
-                                      <i class="pi pi-calendar mr-2"></i>
-                                      <span class="font-medium">About</span>
-                                  </a>
-                              </li>
-                          </ul>
-                      </li>
-                  </ul>
-              </div>
-              <div class="mt-auto">
-                  <hr class="mb-3 mx-3 border-top-1 border-none surface-border" />
-                  <a v-ripple class="m-3 flex align-items-center cursor-pointer p-3 gap-2 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
-                      <Avatar image="https://primefaces.org/cdn/primevue/images/avatar/amyelsner.png" shape="circle" />
-                      <span class="font-bold">Daniel Gallagher</span>
-                  </a>
-              </div>
-        </div>
-        <Divider layout="vertical"/>
-      </div>
-
-    <TabView @tab-change="reload" :active-index="activeTab">
+    <TabView class="z-20" @tab-change="reload" :active-index="activeTab">
         <!-- Editor Tab -->
         <TabPanel header="Editor" :activeIndex="activeTab">
-            <div class="flex justify-content-right">
-                <Card style="width: 80rem; overflow: hidden">
-                    <template #title>Minimalist Grammar Editor</template>
-                    <template #content>
-                    <p class="m-0">
-                        Input your grammar below and submit in order to generate its di-graph representation. 
+            <div class="flex items-start gap-4 p-3 border-round border-1 surface-border" style="justify-content: center;">
+                <div class="text-left" style="width: 40%;">
+                    <h2>Grammar Input</h2>
+                    <p class="flex-wrap m-0">
+                        Input your grammar and submit in order to generate its di-graph representation. 
                         Please use two colons to separate phonological forms from feature bundles and end each lexical item with a semi-colon.
                         For instance,
                         <br><br>
@@ -273,74 +336,228 @@ const onCombineStates = async (): Promise<string> => {
                         -s :: =>v +k t;
                         <br>
                         -ed :: =>v +k t;
+                        <br>
+                        praise :: =d =d +k v;
                         <br><br>
-                        You can additionally choose the algorithm you would like to use to calculate the grammar size.
                     </p>
 
-                    <Divider />
+                    <h2>What is the size of an MG?</h2>
+                    <p>The size of an MG is measured using the Minimum Description Length. This can be defined as follows:</p>
+                    <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+                        <munder>
+                            <mo>∑</mo>
+                            <mrow>
+                            <mi>s</mi>
+                            <mo>::</mo>
+                            <mi>δ</mi>
+                            <mo>∈</mo>
+                            <mi>Lex</mi>
+                            </mrow>
+                        </munder>
+                        <mrow>
+                            <mo>(</mo>
+                            <mrow>
+                            <mo>|</mo><mi>s</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mn>2</mn><mo>×</mo><mo>|</mo><mi>δ</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mn>1</mn>
+                            </mrow>
+                            <mo>)</mo>
+                            <mo>×</mo>
+                            <mrow>
+                            <msub>
+                                <mi>log</mi>
+                                <mn>2</mn>
+                            </msub>
+                            <mo>(</mo>
+                            <mo>|</mo><mi>Σ</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mo>|</mo><mi>Types</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mo>|</mo><mi>Base</mi><mo>|</mo>
+                            <mo>+</mo>
+                            <mn>1</mn>
+                            <mo>)</mo>
+                            </mrow>
+                        </mrow>
+                        <mo>.</mo>
+                    </math>
+                    <p>We let |s| be the length of a given string and |δ| be the number of features.</p>
+                    <p>Types = {category, right selector, left selector, morphological selector, overt licensor, covert licensor, licensee}</p>
+                    <p>Σ is the set of characters in an alphabet, for instance in English this is equal to 26.</p>
+                    <p>|Base| is the total number of categories.</p>
+                    <p>The first part determines the total number of symbols used, while the second part determines the cost of encoding a symbol.</p>
 
-                    <div class="flex justify-content-center" style="flex-direction: column; gap: 25px;">
-                        <div>
-                            <Dropdown v-model="selectedCity" :options="sizeAlgorithms" optionLabel="name" placeholder="Size Algorithm" checkmark :highlightOnSelect="false" class="w-full md:w-14rem" />
-                        </div>
-                            <Textarea v-model="mgTextValue" autoResize rows="20" cols="10" />
-                        <div>
+                </div>
+
+                <div class="flex flex-column items-start gap-4 p-3 border-round border-1 surface-border">
+                    <div class="flex flex-column">
+                        <h2>MG Builder</h2>
+                        <label class="flex-wrap m-0 pb-1 mb-1">
+                            Depending on the language you're parsing, you may need to adjust the alphabet size.
+                            <br>
+                            The default alphabet size is for English.
+                            <br>
+                            Types correspond to the standard for Lexical Decomposition.
+                        </label>
+                        <br>
+                        <div class="flex flex-row">
+                            <div class="flex flex-column" style="margin-right: 2vw; align-items: center;">
+                                <label class="mb-3 gap-3">|Σ|</label>
+                                <InputNumber v-model="mdl_alphabet_size" showButtons buttonLayout="vertical" style="width: 3rem" :min="0" :max="99">
+                                    <template #incrementbuttonicon>
+                                        <span class="pi pi-plus" />
+                                    </template>
+                                    <template #decrementbuttonicon>
+                                        <span class="pi pi-minus" />
+                                    </template>
+                                </InputNumber>
+                            </div>
+                            <div class="flex flex-column" style="margin-left: 2vw; align-items: center;">
+                                <label class="mb-3 gap-3">|Types|</label>
+                                <InputNumber v-model="mdl_num_types" showButtons buttonLayout="vertical" style="width: 3rem" :min="0" :max="99">
+                                    <template #incrementbuttonicon>
+                                        <span class="pi pi-plus" />
+                                    </template>
+                                    <template #decrementbuttonicon>
+                                        <span class="pi pi-minus" />
+                                    </template>
+                                </InputNumber>
+                            </div>
+                            <div class="flex flex-column" style="justify-content: center; margin-left: 4vw;">
+                                    <div class="flex flex-column" style="margin-bottom: 2vh; align-items: center;justify-content: center;;">
+                                        <label for="over_label" >Start Item</label>
+                                        <InputText class="w-5rem" id="over_label" v-model="path_start_node" />
+                                    </div>
+                                    <div class="flex flex-column" style="align-items: center; justify-content: left;">
+                                        <label for="over_label" >End Item</label>
+                                        <InputText class="w-5rem" id="over_label" v-model="path_end_node" />
+                                    </div>
+                            </div>
                         </div>
                     </div>
-                    </template>
-                    <template #footer>
-                    <div class="flex gap-3 mt-1" style="width: 30em;">
-                        <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
-                        <Button label="Submit" class="w-full" @click="submitGrammar"/>
-                        <p>{{ responseNotification }}</p>
+                    <div class="flex flex-column">
+                        <div class="flex flex-row">
+                        <Textarea v-model="mgTextValue" autoResize rows="15" cols="50" />
+                        </div>
+                        <div class="flex flex-row gap-3 mt-1" style="width: 30vw;">
+                            <Button label="Parse MG" class="w-full" @click="submitGrammar"/>
+                            <Button label="Cancel" severity="secondary" outlined class="w-full" @click="clearGrammarTextBox"/>
+                        </div>
                     </div>
-                    </template>
-                </Card>
+
+                </div>
+
+
             </div>
+
+            <div class="flex flex-column">
+                <div class="flex flex-row" style="justify-content: center;">
+                    <Panel v-if="mgSize" class="flex flex-column gap-4 mt-5 px-4" style="padding-top: 5%;">
+                        <div>
+                            <h2 class="block font-semibold mb-2">MG => JSON</h2>
+                            <Textarea v-model="mgAsRawJson" rows="30" cols="50" class="w-full" style="resize: none;" />
+                        </div>
+                    </Panel>
+                    <Panel v-if="mgSize" class="flex flex-column gap-4 mt-5 px-4" style="padding-top: 5%;">
+                        <h2 class="block text-md font-semibold mb-2">Metrics & Pathways</h2>
+                        <br>
+                        <DataTable :value="mdl_metrics" tableStyle="min-width: 50rem">
+                            <Column field="metric" header="Metric"></Column>
+                            <Column field="value" header="Value"></Column>
+                        </DataTable>
+                        <br>
+
+                        <div class="p-grid p-gap-4">
+                            <h2 class="block text-md font-semibold mb-2">All Pathways</h2>
+                            <br>
+                            <div class="p-col-12 p-md-6" v-if="all_pathways && all_pathways.length">
+                                <ul class="p-m-0 p-pl-3">
+                                    <li v-for="(item, index) in all_pathways" :key="'all-' + index">
+                                        {{ path_start_node }} => {{ item }} => {{ path_end_node }}
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <h2 class="block text-md font-semibold mb-2">Shortest Pathways</h2>
+                            <br>
+                            <div class="p-col-12 p-md-6" v-if="shortest_pathways && shortest_pathways.length">
+                                <ul class="p-m-0 p-pl-3">
+                                    <li v-for="(item, index) in shortest_pathways" :key="'shortest-' + index">
+                                        {{ path_start_node }} => {{ item }} => {{ path_end_node }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </Panel>
+                </div>
+                <div class="flex flex-row gap-4 mt-5 px-4" style="justify-content: center;">
+                    <Panel>
+                        <label class="block text-md font-semibold mb-2">Visualisation</label>
+                        <GraphVis ref="graph_vis" />
+                    </Panel>
+                </div>
+
+            </div>
+
+
+        
         </TabPanel>
 
+        <!-- Decomposition Page-->
         <TabPanel header="Decomposition" :activeIndex="activeTab">
             <div class="flex justify-content-right">
                 <Card style="width: 80rem; overflow: hidden">
-                    <template #title>Perform Lexical Decomposition</template>
+                    <template #title>Lexical Decomposition</template>
                     <template #content>
+                        <p>Here you can decompose the grammar either with the help of suggestions which are generated based on the most common affixes or manually below.</p>
                     <Divider />
-                    <h1>Your items are here...</h1>
+
                     <div v-if="loading_decomp_suggestions"><p>Loading...</p></div>
-                    <p>Suggestions:</p>
-                    <div v-for="(li_vec, affix) in decomp_suggestions" :key="affix" >
-                        <Button class="btn btn-light" @click="decompose($event, affix, li_vec)">{{ affix }}</Button>
-                        <ul>
-                            <li v-for="li in li_vec" :key="li">{{ li }}</li>
-                        </ul>
-                    </div>
-                    <input v-model="state_a_combine" placeholder="State A" />
-                    <input v-model="state_b_combine" placeholder="State B" />
-                    <Button @click="onCombineStates" type="submit" severity="secondary" label="Submit" />
-                    <Form v-slot="$form" @submit="onCombineStates" class="flex flex-col gap-4 w-full sm:w-56">
-                        <div class="flex flex-col gap-1">
-                            <InputText name="username" type="text" placeholder="Username" fluid />
-                            <Message v-if="$form.username?.invalid" severity="error" size="small" variant="simple">{{ $form.username.error?.message }}</Message>
+
+                    <div class="card flex flex-row gap-3">
+                        <div class="flex flex-row" v-for="(li_vec, affix) in decomp_suggestions" :key="affix" >
+                            <Button rounded variant="outlined" @click="decompose($event, affix, li_vec)">{{ affix }}</Button>
                         </div>
-                        <Button type="submit" severity="secondary" label="Submit" />
-                    </Form>
+                    </div>
+ 
+                    <ButtonGroup class="flex gap-3 mt-1" style="width: 10vw;">
+                    </ButtonGroup>
+
+                    <ButtonGroup class="gap-3">
+                        <Button label="Analyse" icon="pi pi-check" size="small" @click="get_suggestions"/>
+                        <Button label="Delete" icon="pi pi-trash" size="small"/>
+                    </ButtonGroup>
+
+                    <Divider />
+
+                    <div class="card flex flex-column gap-1">
+                        <h2>Combine States Manually</h2>
+                        <br>
+                        <div class="flex flex-column">
+                            <!-- State A & B Inputs -->
+                            <div class="p-fluid flex flex-row grid gap-2 mb-4">
+                                <div class="">
+                                    <InputText v-model="state_a_combine" placeholder="State A" />
+                                </div>
+                                <div class="">
+                                    <InputText v-model="state_b_combine" placeholder="State B" />
+                                </div>
+                            </div>
+                            <Button class="col-1" @click="onCombineStates" type="submit" severity="secondary" label="Combine States" />
+                        </div>
+                    </div>
+
+                    <Divider />
+
                     </template>
                     <template #footer>
-                    <div class="flex gap-3 mt-1" style="width: 30em;">
-                        <Button label="Cancel" severity="secondary" outlined class="w-full" />
-                        <Button label="Calculate Decomposition Suggestions" class="w-full" @click="get_suggestions"/>
-                    </div>
                     </template>
                 </Card>
             </div>
         </TabPanel>
 
-        <!-- Visualisation Tab -->
-        <TabPanel header="Visualisation" :activeIndex="activeTab">
-            <h1>MG-Graph Visualisation</h1>
-            <h2>Size: {{  Math.round(mgSize)  }}</h2>
-            <GraphVis ref="graph_vis"/>
-        </TabPanel>
     </TabView>
 
     </div>
