@@ -19,8 +19,9 @@
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
 [![LinkedIn][linkedin-shield]][linkedin-url]
-[![Vue.js][Vue.js]][Vue-url]
 [![Rust][Rust]][Rust-url]
+[![TypeScript][TypeScript]][Typescript-url]
+[![Vue.js][Vue.js]][Vue-url]
 [![Tauri][Tauri]][Tauri-url]
 [![Neo4J][Neo4J]][Neo4J-url]
 
@@ -47,32 +48,6 @@
   </p>
 </div>
 
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
@@ -94,9 +69,10 @@ MG-Graph is a cross-platform application designed for researchers in theoretical
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
-
-This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
+This project aimed to model MGs using a graph database given how they naturally lend themselves to this type of representation.
+An Actix backend API was implemented with Rust which communicates with the Vue.js / Tauri frontend.
 * [![Rust][Rust]][Rust-url]
+* [![TypeScript][TypeScript]][TypeScript-url]
 * [![Vue.js][Vue.js]][Vue-url]
 * [![Tauri][Tauri]][Tauri-url]
 * [![Neo4J][Neo4J]][Neo4J-url]
@@ -169,7 +145,7 @@ Don't forget to give the project a star! Thanks again!
 [linkedin-url]: https://www.linkedin.com/in/daniel-gallagher-a520161a3/
 [product-screenshot]: images/screenshot.png
 
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D
+[Vue.js]: https://img.shields.io/badge/-Vue.js-4fc08d?style=flat&logo=vuedotjs&logoColor=white
 [Vue-url]: https://vuejs.org/
 
 [Rust]: https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white
@@ -177,6 +153,9 @@ Don't forget to give the project a star! Thanks again!
 
 [Tauri]: https://img.shields.io/badge/Tauri-24C8D8?logo=tauri&logoColor=fff
 [Tauri-url]: https://v2.tauri.app
+
+[TypeScript]: https://shields.io/badge/TypeScript-3178C6?logo=TypeScript&logoColor=FFF&style=flat-square
+[TypeScript-url]: https://www.typescriptlang.org/
 
 [Neo4J]: https://img.shields.io/badge/Neo4j-008CC1?logo=neo4j&logoColor=white
 [Neo4J-url]: [https://laravel.com](https://neo4j.com/)
