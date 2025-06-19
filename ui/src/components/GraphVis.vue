@@ -82,8 +82,8 @@ async function reload_vis() {
                 gravitationalConstant: -150, // Change gravitational constant to pull nodes further apart
                 centralGravity: 0.003, // Adjust the central gravity to move nodes away from the center
                 springLength: 250, // Increase spring length to make nodes more spread out
-                springConstant: 0.02, // Decrease spring constant for less attractive force
-                damping: 0.4, // Adjust the damping to slow the node movement
+                springConstant: 0.03, // Decrease spring constant for less attractive force
+                damping: 1, // Adjust the damping to slow the node movement
             },
             barnesHut: {
                 theta: 0.5, // This is relevant if you're using barnesHut solver; controls accuracy vs. performance

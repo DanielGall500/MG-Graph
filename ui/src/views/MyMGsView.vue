@@ -155,8 +155,11 @@ onMounted(() => {
 
             <template #content>
                 <div v-for="(line, i) in grammar.grammar" :key="i" class="text-sm text-gray-500">{{ line }} <br> </div>
-                <br><br>
-                <Button @click="deleteGrammar(index)" size="small" icon="pi pi-times" severity="danger" variant="text" raised rounded aria-label="Cancel"/>
+           </template>
+
+           <template #footer>
+                <Divider/>
+                <Button @click="deleteGrammar(index)"  raised rounded severity="danger">Delete</Button>
            </template>
             </Card>
         </div>

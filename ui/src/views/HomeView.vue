@@ -337,7 +337,7 @@ const onCombineStates = async (): Promise<string> => {
                         <br>
                         -ed :: =>v +k t;
                         <br>
-                        praise :: =d =d +k t;
+                        praise :: =d =d +k v;
                         <br><br>
                     </p>
 
