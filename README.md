@@ -26,11 +26,10 @@
 [![Neo4J][Neo4J]][Neo4J-url]
 
 
-
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-    <!-- <img src="images/logo.png" alt="Logo" width="80" height="80"> -->
+    <img src="misc/MG-Graph-logo.png" alt="Logo" width="80" height="80">
 
   <h3 align="center">MG-Graph Desktop</h3>
 
@@ -50,6 +49,8 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
+
+![Project Structure](misc/structure.png)
 
 MG-Graph is a cross-platform application designed for researchers in theoretical linguistics. It allows you to model, visualise, and analyse Minimalist Grammars in a graph-based format. Built for portability and accessibility, it helps bridge theoretical syntax with computational tools, supporting research into syntactic structure and linguistic abstraction.
 
