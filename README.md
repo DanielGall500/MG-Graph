@@ -49,10 +49,9 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-
-![Project Structure](misc/structure.png)
-
 MG-Graph is a cross-platform application designed for researchers in theoretical linguistics. It allows you to model, visualise, and analyse Minimalist Grammars in a graph-based format. Built for portability and accessibility, it helps bridge theoretical syntax with computational tools, supporting research into syntactic structure and linguistic abstraction.
+
+<img src="misc/structure.png" alt="Logo" width="700" height="500">
 
 ## Use Cases
 * Providing a unified, **interactive interface** for working with MGs.
