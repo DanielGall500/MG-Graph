@@ -526,8 +526,7 @@ const onCombineStates = async (): Promise<string> => {
                     </ButtonGroup>
 
                     <ButtonGroup class="gap-3">
-                        <Button label="Analyse" icon="pi pi-check" size="small" @click="get_suggestions"/>
-                        <Button label="Delete" icon="pi pi-trash" size="small"/>
+                        <Button label="Suggestions" style="margin-right: 2vw;" size="small" @click="get_suggestions"/>
                     </ButtonGroup>
 
                     <Divider />
@@ -545,7 +544,7 @@ const onCombineStates = async (): Promise<string> => {
                                     <InputText v-model="state_b_combine" placeholder="State B" />
                                 </div>
                             </div>
-                            <Button class="col-1" @click="onCombineStates" type="submit" severity="secondary" label="Combine States" />
+                            <Button class="col-1" @click="onCombineStates" type="submit" label="Combine States" />
                         </div>
                     </div>
 

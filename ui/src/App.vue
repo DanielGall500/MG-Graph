@@ -9,10 +9,11 @@ const visible = ref(false);
   <div class="flex flex-wrap">
   <Toast />
   <div class="sticky top-0 bg-white z-50 shadow-md card flex justify-content-left" style="z-index: 50; background-color: white;width: 100vh;">
-          <div class="flex flex-row h-full align-items-center justify-content-center">
-              <div class="flex align-items-center justify-content-between px-4 pt-3 flex-shrink-0">
-                  <span class="inline-flex align-items-center gap-2">
-                      <span class="font-semibold text-2xl text-primary">MG-Graph</span>
+          <div class="flex flex-row h-full align-items-center justify-content-center" style="align-items: center; justify-content: center;">
+              <div class="flex align-items-center justify-content-between flex-shrink-0">
+                  <span class="inline-flex align-items-center gap-2" style="align-items: center;">
+                      <img src="@/assets/logo.svg" alt="App Logo" style="width: 6vw; margin-right: 2vw; margin-left: 2vw;"/>
+                      <span class="font-semibold text-2xl text-primary" style="margin-right: 2vw;">MG-Graph</span>
                   </span>
               </div>
               <div class="overflow-y-auto">
