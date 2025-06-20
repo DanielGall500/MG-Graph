@@ -33,11 +33,8 @@ impl DataManager {
     pub fn get_data_path(filename: &str) -> PathBuf {
 
         // Get the directory of the running executable
-        let exe_dir = std::env::current_exe()
-            .expect("Failed to get current exe path")
-            .parent()
-            .expect("Exe path has no parent")
-            .to_path_buf();
+        let exe_dir: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("src"); 
 
         // Construct the data path relative to exe_dir
         exe_dir.join("data").join("json").join(filename)
