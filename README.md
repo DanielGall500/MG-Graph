@@ -48,7 +48,12 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-MG-Graph is a cross-platform application designed for researchers in theoretical linguistics. It allows you to model, visualise, and analyse Minimalist Grammars in a graph-based format. The ultimate goal of the application is to make the comparison of different theories of natural language syntax easier, allowing you to quantitatively compare the Description Length metric of grammar fragments known as MGs (see Stabler 1997).
+MG-Graph is a cross-platform application designed for researchers in theoretical linguistics. It allows you to model, visualise, and analyse Minimalist Grammars in a graph-based format. The ultimate goal of the application is to make the comparison of different theories of natural language syntax easier, allowing you to quantitatively compare the Description Length metric of grammars as well as the potential derivations that are possible with a given grammar.
+
+One of the core components of the application is an interface with a Neo4J Graph Database which allows for visualisation of grammars as a graph. Various operations can be performed on the graph in order to make generalisations about your grammar.
+MGs can additionally be created and saved locally so that you can have them all in one place.
+
+In order to use this application you must download Neo4J Desktop, available also as a free Community Edition. From there you can run a graph database and provide the application with your Neo4J settings in the settings tab. More information is provided below.
 
 <img src="misc/structure.png" alt="Logo" width="700" height="500">
 
@@ -97,6 +102,14 @@ Don't forget to give the project a star! Thanks again!
   * Download: [https://neo4j.com/download/](https://neo4j.com/download/)
 * **Rust** (for backend execution)
 * **Node.js** (for frontend UI)
+
+You must provide your Neo4J graph database settings in the Settings menu within the application.
+```
+  Address: bolt://localhost:7687,
+  Database Name: neo4j,
+  Username: neo4j,
+  Password: your_password
+```
 
 ---
 
